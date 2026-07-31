@@ -1,0 +1,11 @@
+.env
+.venv/
+__pycache__/
+*.py[cod]
+
+logs/*.log
+data/*.csv
+data/*.json
+!data/nse_symbols.csv
+reports/*
+!reports/.gitkeep
