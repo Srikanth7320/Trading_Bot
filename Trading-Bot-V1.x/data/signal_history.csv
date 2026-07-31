@@ -1,0 +1,22 @@
+symbol,price,score,action,reason,stop_loss,target,rsi,macd,signal,volume_ratio,news_score,ai_note,created_at
+NHPC,81.05,94.0,BUY,"score 94.0, MACD bullish, price above SMA20, volume expansion",79.08,85.91,59.37,0.6418,0.5697,1.35,0.0,"**NHPC Swing Analysis**
+
+*   **Trend:** Strongly bullish. NHPC trades above its 20, 50, and 200-day EMAs (Close: 81.05) with positive short and medium-term momentum.
+*   **Why Setup is Attractive:** The setup boasts a stellar Technical Score of 94.0. A bullish MACD crossover combined with an RSI of 59.4 indicates room for further upside. Accumulation is backed by an above-average Volume Ratio of 1.35.
+*   **Risk:** A reversal below the key support cluster of the 20-EMA (79.26) and 50-EMA (78.57) on a daily closing basis.
+*   **Holding Period:** 2 to 3 weeks (Swing trading).",2026-07-21T09:20:07
+NHPC,SELL,78.94,-2.6,Stop loss hit,2026-07-28T04:35:28
+GAIL,175.81,100.0,BUY,"score 100.0, MACD bullish, price above SMA20, volume expansion",171.39,186.36,64.38,0.6479,0.6445,2.09,0.0,"**Trend:** Strongly bullish. GAIL is trading above its 20, 50, and 200-day EMAs, confirmed by a positive MACD crossover and a healthy RSI of 64.4.
+
+**Why Setup is Attractive:** The stock features a perfect Technical Score (100) and a surging Volume Ratio of 2.09, indicating strong institutional buying. Tailwinds from the expanding global biogas market further support GAIL’s long-term green energy transition.
+
+**Risk:** Potential trend reversal or correction. A stop-loss should be placed below the immediate support of the 20-day EMA (172.70) or 50-day EMA (170.30).
+
+**Holding Period:** 2 to 4 weeks (Swing Trade).",2026-07-28T09:20:10
+ZEEL,114.8,100.0,BUY,"score 100.0, MACD bullish, price above SMA20, volume expansion",109.56,122.66,74.92,1.827,0.9466,2.53,0.0,"**Trend:** Strong bullish. ZEEL is trading well above its 20, 50, and 200 EMAs, confirming a healthy, aligned uptrend across all timeframes.
+
+**Risk:** High event-risk and volatility ahead of the EGM due to the proxy adviser split on the promoter warrant issue. Additionally, an RSI of 74.9 indicates near-term overbought conditions.
+
+**Holding Period:** 1 to 3 weeks.
+
+**Why Setup is Attractive:** With a perfect technical score of 100, the stock shows powerful momentum. This breakout is backed by a massive volume surge (Volume Ratio: 2.53) and a bullish MACD expansion. Strong momentum indicators make it an excellent candidate for a continuation play on minor dips.",2026-07-31T09:20:13

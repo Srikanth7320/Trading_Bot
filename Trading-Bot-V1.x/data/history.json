@@ -1,0 +1,58 @@
+[
+  {
+    "symbol": "NHPC",
+    "price": 81.05,
+    "score": 94.0,
+    "action": "BUY",
+    "reason": "score 94.0, MACD bullish, price above SMA20, volume expansion",
+    "stop_loss": 79.08,
+    "target": 85.91,
+    "rsi": 59.37,
+    "macd": 0.6418,
+    "signal": 0.5697,
+    "volume_ratio": 1.35,
+    "news_score": 0.0,
+    "ai_note": "**NHPC Swing Analysis**\n\n*   **Trend:** Strongly bullish. NHPC trades above its 20, 50, and 200-day EMAs (Close: 81.05) with positive short and medium-term momentum.\n*   **Why Setup is Attractive:** The setup boasts a stellar Technical Score of 94.0. A bullish MACD crossover combined with an RSI of 59.4 indicates room for further upside. Accumulation is backed by an above-average Volume Ratio of 1.35.\n*   **Risk:** A reversal below the key support cluster of the 20-EMA (79.26) and 50-EMA (78.57) on a daily closing basis.\n*   **Holding Period:** 2 to 3 weeks (Swing trading).",
+    "created_at": "2026-07-21T09:20:07"
+  },
+  {
+    "symbol": "NHPC",
+    "action": "SELL",
+    "current_price": 78.94,
+    "pnl_pct": -2.6,
+    "reason": "Stop loss hit",
+    "created_at": "2026-07-28T04:35:28"
+  },
+  {
+    "symbol": "GAIL",
+    "price": 175.81,
+    "score": 100.0,
+    "action": "BUY",
+    "reason": "score 100.0, MACD bullish, price above SMA20, volume expansion",
+    "stop_loss": 171.39,
+    "target": 186.36,
+    "rsi": 64.38,
+    "macd": 0.6479,
+    "signal": 0.6445,
+    "volume_ratio": 2.09,
+    "news_score": 0.0,
+    "ai_note": "**Trend:** Strongly bullish. GAIL is trading above its 20, 50, and 200-day EMAs, confirmed by a positive MACD crossover and a healthy RSI of 64.4.\n\n**Why Setup is Attractive:** The stock features a perfect Technical Score (100) and a surging Volume Ratio of 2.09, indicating strong institutional buying. Tailwinds from the expanding global biogas market further support GAIL\u2019s long-term green energy transition.\n\n**Risk:** Potential trend reversal or correction. A stop-loss should be placed below the immediate support of the 20-day EMA (172.70) or 50-day EMA (170.30).\n\n**Holding Period:** 2 to 4 weeks (Swing Trade).",
+    "created_at": "2026-07-28T09:20:10"
+  },
+  {
+    "symbol": "ZEEL",
+    "price": 114.8,
+    "score": 100.0,
+    "action": "BUY",
+    "reason": "score 100.0, MACD bullish, price above SMA20, volume expansion",
+    "stop_loss": 109.56,
+    "target": 122.66,
+    "rsi": 74.92,
+    "macd": 1.827,
+    "signal": 0.9466,
+    "volume_ratio": 2.53,
+    "news_score": 0.0,
+    "ai_note": "**Trend:** Strong bullish. ZEEL is trading well above its 20, 50, and 200 EMAs, confirming a healthy, aligned uptrend across all timeframes.\n\n**Risk:** High event-risk and volatility ahead of the EGM due to the proxy adviser split on the promoter warrant issue. Additionally, an RSI of 74.9 indicates near-term overbought conditions.\n\n**Holding Period:** 1 to 3 weeks.\n\n**Why Setup is Attractive:** With a perfect technical score of 100, the stock shows powerful momentum. This breakout is backed by a massive volume surge (Volume Ratio: 2.53) and a bullish MACD expansion. Strong momentum indicators make it an excellent candidate for a continuation play on minor dips.",
+    "created_at": "2026-07-31T09:20:13"
+  }
+]
