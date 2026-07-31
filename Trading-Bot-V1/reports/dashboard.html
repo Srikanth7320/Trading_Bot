@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NSE Trading Dashboard</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111827;
+      --panel-2: #1f2937;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --border: #334155;
+      --accent: #2563eb;
+      --chart-bg: #020617;
+      --table-border: #334155;
+      --button-bg: #1f2937;
+    }
+    body { font-family: Arial, sans-serif; margin: 0; background: var(--bg); color: var(--text); transition: background 0.2s ease, color 0.2s ease; }
+    body.light-theme {
+      --bg: #f8fafc;
+      --panel: #ffffff;
+      --panel-2: #f1f5f9;
+      --text: #0f172a;
+      --muted: #475569;
+      --border: #cbd5e1;
+      --accent: #2563eb;
+      --chart-bg: #f8fafc;
+      --table-border: #e2e8f0;
+      --button-bg: #e2e8f0;
+    }
+    .app { display: flex; min-height: 100vh; }
+    .sidebar { width: 240px; background: var(--panel); padding: 20px; border-right: 1px solid var(--border); }
+    .sidebar h2 { margin-top: 0; font-size: 1.2rem; }
+    .menu-btn { display: block; width: 100%; text-align: left; margin-bottom: 8px; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--panel-2); color: var(--text); cursor: pointer; }
+    .menu-btn.active { background: var(--accent); border-color: #60a5fa; }
+    .content { flex: 1; padding: 20px; }
+    .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 12px; }
+    .topbar-actions { display: flex; gap: 8px; }
+    .panel { background: var(--panel); padding: 16px; border-radius: 10px; margin-bottom: 16px; display: none; }
+    .panel.active { display: block; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { padding: 10px; border-bottom: 1px solid var(--table-border); text-align: left; }
+    th { color: #93c5fd; }
+    .positive { color: #4ade80; }
+    .negative { color: #f87171; }
+    .muted { color: var(--muted); }
+    input, button { padding: 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--button-bg); color: var(--text); }
+    #chart { width: 100%; height: 260px; background: var(--chart-bg); border-radius: 8px; border: 1px solid var(--border); padding: 12px; overflow: hidden; }
+    .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+    .stat-card { background: var(--panel-2); padding: 12px; border-radius: 8px; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <h2>Trading Menu</h2>
+      <button class="menu-btn active" data-target="overview">Overview</button>
+      <button class="menu-btn" data-target="positions">Active Positions</button>
+      <button class="menu-btn" data-target="signals">Recent Signals</button>
+      <button class="menu-btn" data-target="stock">Stock Viewer</button>
+      <button class="menu-btn" data-target="backtest">Backtest</button>
+    </aside>
+
+    <main class="content">
+      <div class="topbar">
+        <h3 style="margin:0;">NSE Live Dashboard</h3>
+        <div class="topbar-actions">
+          <button id="themeToggle">🌙 Dark</button>
+          <button id="refreshBtn">Refresh</button>
+        </div>
+      </div>
+      <div id="status" class="muted" style="margin-bottom: 12px;">Loading data...</div>
+
+      <div id="overview" class="panel active">
+        <h3>Overview</h3>
+        <div id="overviewStats" class="stat-grid">Loading...</div>
+      </div>
+
+      <div id="positions" class="panel">
+        <h3>Active Positions</h3>
+        <table id="positionsTable">
+          <thead><tr><th>Symbol</th><th>Entry</th><th>SL</th><th>Target</th><th>Reason</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div id="signals" class="panel">
+        <h3>Recent Signals</h3>
+        <table id="signalsTable">
+          <thead><tr><th>Time</th><th>Symbol</th><th>Action</th><th>Price</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div id="stock" class="panel">
+        <h3>Stock Viewer</h3>
+        <label>Symbol: </label>
+        <select id="symbolInput"></select>
+        <button onclick="loadSymbolData()">Load</button>
+        <div id="chart" class="muted" style="margin-top: 10px;">Chart placeholder</div>
+      </div>
+
+      <div id="backtest" class="panel">
+        <h3>Backtest</h3>
+        <p class="muted">Use the backtest runner from the terminal to evaluate the strategy on historical data.</p>
+        <pre>python backtest_runner.py --symbols RELIANCE TCS HDFC</pre>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const menuButtons = document.querySelectorAll('.menu-btn');
+    const panels = document.querySelectorAll('.panel');
+    const statusEl = document.getElementById('status');
+    const themeToggle = document.getElementById('themeToggle');
+    const refreshBtn = document.getElementById('refreshBtn');
+
+    menuButtons.forEach(button => {
+      button.addEventListener('click', () => {
+        menuButtons.forEach(btn => btn.classList.remove('active'));
+        panels.forEach(panel => panel.classList.remove('active'));
+        button.classList.add('active');
+        document.getElementById(button.dataset.target).classList.add('active');
+      });
+    });
+
+    function applyTheme(theme) {
+      const isLight = theme === 'light';
+      document.body.classList.toggle('light-theme', isLight);
+      themeToggle.textContent = isLight ? '☀️ Light' : '🌙 Dark';
+      localStorage.setItem('dashboard-theme', theme);
+    }
+
+    function toggleTheme() {
+      const nextTheme = document.body.classList.contains('light-theme') ? 'dark' : 'light';
+      applyTheme(nextTheme);
+    }
+
+    async function loadDashboardData() {
+      refreshBtn.disabled = true;
+      refreshBtn.textContent = 'Refreshing...';
+      try {
+        const positions = await fetch('../data/active_positions.json').then(r => r.json()).catch(() => []);
+        const history = await fetch('../data/history.json').then(r => r.json()).catch(() => []);
+        renderOverview(positions, history);
+        renderPositions(positions);
+        renderSignals(history);
+        const now = new Date().toLocaleTimeString();
+        statusEl.textContent = `Last updated: ${now} • ${positions.length} active positions`;
+      } catch (error) {
+        document.getElementById('overviewStats').innerHTML = '<div class="muted">Unable to load bot data.</div>';
+        statusEl.textContent = 'Unable to load bot data.';
+      } finally {
+        refreshBtn.disabled = false;
+        refreshBtn.textContent = 'Refresh';
+      }
+    }
+
+    async function loadSymbolOptions() {
+      const select = document.getElementById('symbolInput');
+      if (!select) return;
+
+      const paths = ['../data/nse_symbols.csv', './nse_symbols.csv', './data/nse_symbols.csv'];
+      let text = null;
+
+      for (const path of paths) {
+        try {
+          const response = await fetch(path);
+          if (!response.ok) continue;
+          text = await response.text();
+          if (text.trim()) break;
+        } catch (error) {
+          continue;
+        }
+      }
+
+      if (!text) {
+        select.innerHTML = '<option value="">Unable to load symbols</option>';
+        return;
+      }
+
+      const lines = text.trim().split(/\r?\n/).slice(1);
+      const symbols = lines
+        .map(line => line.split(',')[0].trim())
+        .filter(Boolean);
+
+      if (!symbols.length) {
+        select.innerHTML = '<option value="">No symbols found</option>';
+        return;
+      }
+
+      select.innerHTML = symbols.slice(0, 80).map(symbol => `<option value="${symbol}">${symbol}</option>`).join('');
+      select.value = symbols.includes('RELIANCE') ? 'RELIANCE' : symbols[0];
+    }
+
+    function renderOverview(positions, history) {
+      const overviewStats = document.getElementById('overviewStats');
+      const activeCount = positions.length;
+      const buyCount = history.filter(item => String(item.action || '').toUpperCase() === 'BUY').length;
+      const sellCount = history.filter(item => String(item.action || '').toUpperCase() === 'SELL').length;
+      overviewStats.innerHTML = `
+        <div class="stat-card"><b>Active</b><br>${activeCount}</div>
+        <div class="stat-card"><b>Buy Signals</b><br>${buyCount}</div>
+        <div class="stat-card"><b>Sell Signals</b><br>${sellCount}</div>
+      `;
+    }
+
+    function renderPositions(positions) {
+      const positionsBody = document.querySelector('#positionsTable tbody');
+      positionsBody.innerHTML = '';
+      positions.forEach(pos => {
+        const row = document.createElement('tr');
+        row.innerHTML = `<td>${pos.symbol}</td><td>${pos.entry_price}</td><td>${pos.stop_loss}</td><td>${pos.target}</td><td>${pos.reason || ''}</td>`;
+        positionsBody.appendChild(row);
+      });
+    }
+
+    function renderSignals(history) {
+      const signalsBody = document.querySelector('#signalsTable tbody');
+      signalsBody.innerHTML = '';
+      history.slice(-10).reverse().forEach(item => {
+        const row = document.createElement('tr');
+        const action = String(item.action || '').toUpperCase();
+        const price = item.price ?? item.current_price ?? '-';
+        row.innerHTML = `<td>${item.created_at || ''}</td><td>${item.symbol}</td><td class="${action === 'SELL' ? 'negative' : 'positive'}">${action}</td><td>${price}</td>`;
+        signalsBody.appendChild(row);
+      });
+    }
+
+    async function loadSymbolData() {
+      const symbol = document.getElementById('symbolInput').value.trim().toUpperCase();
+      const chart = document.getElementById('chart');
+      if (!symbol) return;
+      chart.innerHTML = 'Loading chart data...';
+      try {
+        const response = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}.NS?interval=1d&range=6mo`);
+        const payload = await response.json();
+        const closes = payload.chart.result?.[0]?.indicators?.quote?.[0]?.close || [];
+        if (!closes.length) {
+          chart.innerHTML = 'No chart data available for this symbol.';
+          return;
+        }
+        const maxValue = Math.max(...closes.filter(Boolean));
+        const minValue = Math.min(...closes.filter(Boolean));
+        const points = closes.map((value, index) => {
+          const x = (index / Math.max(1, closes.length - 1)) * 360;
+          const y = 200 - ((value - minValue) / Math.max(1, maxValue - minValue)) * 180;
+          return `${x},${y}`;
+        }).join(' ');
+        chart.innerHTML = `<svg viewBox="0 0 360 220" width="100%" height="220"><polyline fill="none" stroke="#38bdf8" stroke-width="2" points="${points}" /></svg>`;
+      } catch (error) {
+        chart.innerHTML = 'Unable to load chart data from Yahoo Finance.';
+      }
+    }
+
+    themeToggle.addEventListener('click', toggleTheme);
+    refreshBtn.addEventListener('click', () => loadDashboardData());
+
+    const savedTheme = localStorage.getItem('dashboard-theme') || 'dark';
+    applyTheme(savedTheme);
+
+    loadDashboardData();
+    loadSymbolOptions();
+    loadSymbolData();
+    setInterval(() => loadDashboardData(), 15 * 60 * 1000);
+  </script>
+</body>
+</html>
