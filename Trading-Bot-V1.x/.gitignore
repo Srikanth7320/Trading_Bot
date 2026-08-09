@@ -9,3 +9,4 @@ data/*.json
 !data/nse_symbols.csv
 reports/*
 !reports/.gitkeep
+!reports/dashboard.html

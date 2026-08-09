@@ -1,0 +1,448 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NSE Trading Dashboard</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111827;
+      --panel-2: #1f2937;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --border: #334155;
+      --accent: #2563eb;
+      --chart-bg: #020617;
+      --table-border: #334155;
+      --button-bg: #1f2937;
+    }
+    body { font-family: Arial, sans-serif; margin: 0; background: var(--bg); color: var(--text); transition: background 0.2s ease, color 0.2s ease; }
+    body.light-theme {
+      --bg: #f8fafc;
+      --panel: #ffffff;
+      --panel-2: #f1f5f9;
+      --text: #0f172a;
+      --muted: #475569;
+      --border: #cbd5e1;
+      --accent: #2563eb;
+      --chart-bg: #f8fafc;
+      --table-border: #e2e8f0;
+      --button-bg: #e2e8f0;
+    }
+    .app { display: flex; min-height: 100vh; }
+    .sidebar { width: 240px; background: var(--panel); padding: 20px; border-right: 1px solid var(--border); }
+    .sidebar h2 { margin-top: 0; font-size: 1.2rem; }
+    .menu-btn { display: block; width: 100%; text-align: left; margin-bottom: 8px; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--panel-2); color: var(--text); cursor: pointer; }
+    .menu-btn.active { background: var(--accent); border-color: #60a5fa; }
+    .content { flex: 1; padding: 20px; }
+    .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 12px; }
+    .topbar-actions { display: flex; gap: 8px; }
+    .panel { background: var(--panel); padding: 16px; border-radius: 10px; margin-bottom: 16px; display: none; }
+    .panel.active { display: block; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { padding: 10px; border-bottom: 1px solid var(--table-border); text-align: left; }
+    th { color: #93c5fd; }
+    .positive { color: #4ade80; }
+    .negative { color: #f87171; }
+    .muted { color: var(--muted); }
+    input, button { padding: 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--button-bg); color: var(--text); }
+    #chart { width: 100%; height: 340px; background: var(--chart-bg); border-radius: 8px; border: 1px solid var(--border); padding: 12px; overflow: hidden; position: relative; }
+    .chart-controls { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+    .chart-tooltip { position: absolute; display: none; z-index: 2; background: rgba(15, 23, 42, 0.96); color: #e2e8f0; padding: 8px 10px; border-radius: 8px; border: 1px solid rgba(148, 163, 184, 0.35); font-size: 0.9rem; pointer-events: none; white-space: nowrap; }
+    .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+    .stat-card { background: var(--panel-2); padding: 12px; border-radius: 8px; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <h2>Trading Menu</h2>
+      <button class="menu-btn active" data-target="overview">Overview</button>
+      <button class="menu-btn" data-target="positions">Active Positions</button>
+      <button class="menu-btn" data-target="signals">Recent Signals</button>
+      <button class="menu-btn" data-target="stock">Stock Viewer</button>
+      <!-- <button class="menu-btn" data-target="backtest">Backtest</button> -->
+    </aside>
+
+    <main class="content">
+      <div class="topbar">
+        <h3 style="margin:0;">NSE Live Dashboard</h3>
+        <div class="topbar-actions">
+          <button id="themeToggle">🌙 Dark</button>
+          <button id="refreshBtn">Refresh</button>
+        </div>
+      </div>
+      <div id="status" class="muted" style="margin-bottom: 12px;">Loading data...</div>
+
+      <div id="overview" class="panel active">
+        <h3>Overview</h3>
+        <div id="overviewStats" class="stat-grid">Loading...</div>
+      </div>
+
+      <div id="positions" class="panel">
+        <h3>Active Positions</h3>
+        <table id="positionsTable">
+          <thead><tr><th>Symbol</th><th>Entry</th><th>SL</th><th>Target</th><th>Reason</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div id="signals" class="panel">
+        <h3>Recent Signals</h3>
+        <table id="signalsTable">
+          <thead><tr><th>Time</th><th>Symbol</th><th>Action</th><th>Price</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div id="stock" class="panel">
+        <h3>Stock Viewer</h3>
+        <p class="muted">Choose a symbol and click Load. The dashboard backend fetches the chart data for you.</p>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px;">
+          <label for="symbolInput" style="margin-right: 8px;">Symbol:</label>
+          <select id="symbolInput"></select>
+          <button id="loadChartBtn">Load</button>
+        </div>
+        <div class="chart-controls">
+          <button id="zoomInBtn" type="button">Zoom In</button>
+          <button id="zoomOutBtn" type="button">Zoom Out</button>
+        </div>
+        <div id="chartContainer" style="position: relative;">
+          <div id="chart" class="muted" style="margin-top: 10px; min-height: 200px; display: flex; align-items: center; justify-content: center;">Chart placeholder</div>
+          <div id="chartTooltip" class="chart-tooltip"></div>
+        </div>
+        <div id="chartMeta" class="muted" style="margin-top: 10px;"></div>
+        <div id="chartError" class="muted" style="margin-top: 10px;"></div>
+      </div>
+
+      <div id="backtest" class="panel">
+        <h3>Backtest</h3>
+        <p class="muted">Run the backtest tool from the terminal to simulate the same strategy on historical data.</p>
+        <pre>python backtest_runner.py --symbols RELIANCE TCS HDFC</pre>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const menuButtons = document.querySelectorAll('.menu-btn');
+    const panels = document.querySelectorAll('.panel');
+    const statusEl = document.getElementById('status');
+    const themeToggle = document.getElementById('themeToggle');
+    const refreshBtn = document.getElementById('refreshBtn');
+
+    menuButtons.forEach(button => {
+      button.addEventListener('click', () => {
+        menuButtons.forEach(btn => btn.classList.remove('active'));
+        panels.forEach(panel => panel.classList.remove('active'));
+        button.classList.add('active');
+        document.getElementById(button.dataset.target).classList.add('active');
+      });
+    });
+
+    function applyTheme(theme) {
+      const isLight = theme === 'light';
+      document.body.classList.toggle('light-theme', isLight);
+      themeToggle.textContent = isLight ? '☀️ Light' : '🌙 Dark';
+      localStorage.setItem('dashboard-theme', theme);
+    }
+
+    function toggleTheme() {
+      const nextTheme = document.body.classList.contains('light-theme') ? 'dark' : 'light';
+      applyTheme(nextTheme);
+    }
+
+    const apiRoot = '/api';
+    let currentZoomLevel = 1;
+    const zoomLevels = [1, 1.5, 2, 3];
+    let lastChartData = null;
+
+    async function fetchJson(path) {
+      const response = await fetch(path);
+      if (!response.ok) {
+        throw new Error(`API request failed: ${response.status}`);
+      }
+      return response.json();
+    }
+
+    async function loadDashboardData() {
+      refreshBtn.disabled = true;
+      refreshBtn.textContent = 'Refreshing...';
+      try {
+        const positions = await fetchJson(`${apiRoot}/positions`).catch(() => []);
+        const history = await fetchJson(`${apiRoot}/history`).catch(() => []);
+        renderOverview(positions, history);
+        renderPositions(positions);
+        renderSignals(history);
+        const now = new Date().toLocaleTimeString();
+        statusEl.textContent = `Last updated: ${now} • ${positions.length} active positions`;
+      } catch (error) {
+        document.getElementById('overviewStats').innerHTML = '<div class="muted">Unable to load bot data.</div>';
+        statusEl.textContent = 'Unable to load bot data.';
+      } finally {
+        refreshBtn.disabled = false;
+        refreshBtn.textContent = 'Refresh';
+      }
+    }
+
+    async function loadSymbolOptions() {
+      const select = document.getElementById('symbolInput');
+      if (!select) return;
+
+      const loadFromCsv = async () => {
+        const fallbackPaths = ['../data/nse_symbols.csv', './data/nse_symbols.csv', './nse_symbols.csv'];
+        for (const path of fallbackPaths) {
+          try {
+            const response = await fetch(path);
+            if (!response.ok) continue;
+            const text = await response.text();
+            if (!text.trim()) continue;
+            const lines = text.trim().split(/\r?\n/).slice(1);
+            const symbols = lines
+              .map(line => line.split(',')[0].trim())
+              .filter(Boolean);
+            if (symbols.length) {
+              return symbols;
+            }
+          } catch (error) {
+            continue;
+          }
+        }
+        return [];
+      };
+
+      try {
+        const symbols = await fetchJson(`${apiRoot}/symbols`);
+        if (!Array.isArray(symbols) || !symbols.length) {
+          throw new Error('No symbols returned');
+        }
+        select.innerHTML = symbols.slice(0, 80).map(symbol => `<option value="${symbol}">${symbol}</option>`).join('');
+        select.value = symbols.includes('RELIANCE') ? 'RELIANCE' : symbols[0];
+      } catch (error) {
+        const symbols = await loadFromCsv();
+        if (!symbols.length) {
+          select.innerHTML = '<option value="">Unable to load symbols</option>';
+          return;
+        }
+        select.innerHTML = symbols.slice(0, 80).map(symbol => `<option value="${symbol}">${symbol}</option>`).join('');
+        select.value = symbols.includes('RELIANCE') ? 'RELIANCE' : symbols[0];
+      }
+    }
+
+    function renderOverview(positions, history) {
+      const overviewStats = document.getElementById('overviewStats');
+      const activeCount = positions.length;
+      const buyCount = history.filter(item => String(item.action || '').toUpperCase() === 'BUY').length;
+      const sellCount = history.filter(item => String(item.action || '').toUpperCase() === 'SELL').length;
+      overviewStats.innerHTML = `
+        <div class="stat-card"><b>Active</b><br>${activeCount}</div>
+        <div class="stat-card"><b>Buy Signals</b><br>${buyCount}</div>
+        <div class="stat-card"><b>Sell Signals</b><br>${sellCount}</div>
+      `;
+    }
+
+    function renderPositions(positions) {
+      const positionsBody = document.querySelector('#positionsTable tbody');
+      positionsBody.innerHTML = '';
+      positions.forEach(pos => {
+        const row = document.createElement('tr');
+        row.innerHTML = `<td>${pos.symbol}</td><td>${pos.entry_price}</td><td>${pos.stop_loss}</td><td>${pos.target}</td><td>${pos.reason || ''}</td>`;
+        positionsBody.appendChild(row);
+      });
+    }
+
+    function renderSignals(history) {
+      const signalsBody = document.querySelector('#signalsTable tbody');
+      signalsBody.innerHTML = '';
+      history.slice(-10).reverse().forEach(item => {
+        const row = document.createElement('tr');
+        const action = String(item.action || '').toUpperCase();
+        const price = item.price ?? item.current_price ?? '-';
+        row.innerHTML = `<td>${item.created_at || ''}</td><td>${item.symbol}</td><td class="${action === 'SELL' ? 'negative' : 'positive'}">${action}</td><td>${price}</td>`;
+        signalsBody.appendChild(row);
+      });
+    }
+
+    function showChartMessage(message) {
+      const chart = document.getElementById('chart');
+      const chartError = document.getElementById('chartError');
+      const chartMeta = document.getElementById('chartMeta');
+      chart.innerHTML = '';
+      chartError.textContent = message;
+      chartMeta.textContent = '';
+      const tooltip = document.getElementById('chartTooltip');
+      tooltip.style.display = 'none';
+    }
+
+    function updateZoomButtons() {
+      const index = zoomLevels.indexOf(currentZoomLevel);
+      document.getElementById('zoomInBtn').disabled = index >= zoomLevels.length - 1;
+      document.getElementById('zoomOutBtn').disabled = index <= 0;
+    }
+
+    function getDateLabel(timestamp, index) {
+      if (!timestamp) {
+        return `Day ${index + 1}`;
+      }
+      const date = new Date(timestamp * 1000);
+      return date.toLocaleDateString('en-GB', { month: 'short', day: 'numeric' });
+    }
+
+    function renderChart(closes, timestamps, symbol) {
+      const chart = document.getElementById('chart');
+      const chartMeta = document.getElementById('chartMeta');
+      const tooltip = document.getElementById('chartTooltip');
+      const filtered = closes.filter(value => typeof value === 'number' && !Number.isNaN(value));
+      if (!filtered.length) {
+        showChartMessage('No valid chart values returned.');
+        return;
+      }
+
+      const visibleCount = Math.max(20, Math.min(closes.length, Math.round(closes.length / currentZoomLevel)));
+      const startIndex = Math.max(0, closes.length - visibleCount);
+      const visibleCloses = closes.slice(startIndex);
+      const visibleTimestamps = timestamps?.slice(startIndex) || visibleCloses.map((_, i) => i);
+
+      const marginLeft = 44;
+      const marginRight = 16;
+      const marginBottom = 42;
+      const marginTop = 16;
+      const containerWidth = Math.max(380, chart.clientWidth || 380);
+      const plotWidth = containerWidth - marginLeft - marginRight;
+      const plotHeight = 230;
+      const width = containerWidth;
+      const height = plotHeight + marginTop + marginBottom;
+
+      const maxValue = Math.max(...visibleCloses);
+      const minValue = Math.min(...visibleCloses);
+      const range = maxValue - minValue || 1;
+      const points = visibleCloses.map((value, index) => {
+        const x = marginLeft + (index / Math.max(1, visibleCloses.length - 1)) * plotWidth;
+        const y = marginTop + plotHeight - ((value - minValue) / range) * plotHeight;
+        return `${x},${y}`;
+      }).join(' ');
+
+      const yTicks = 5;
+      const yLabels = Array.from({ length: yTicks }, (_, index) => {
+        const value = maxValue - (range * index) / (yTicks - 1);
+        const y = marginTop + (plotHeight / (yTicks - 1)) * index;
+        return { value, y };
+      });
+
+      const xTicks = Math.min(8, visibleCloses.length);
+      const xLabels = Array.from({ length: xTicks }, (_, index) => {
+        const pointIndex = Math.round((visibleCloses.length - 1) * (index / Math.max(1, xTicks - 1)));
+        const x = marginLeft + (pointIndex / Math.max(1, visibleCloses.length - 1)) * plotWidth;
+        return { label: getDateLabel(visibleTimestamps[pointIndex], startIndex + pointIndex), x };
+      });
+
+      const baseline = marginTop + plotHeight;
+      chartError.textContent = '';
+      chartMeta.textContent = `Showing ${visibleCloses.length} points for ${symbol} • zoom ${currentZoomLevel.toFixed(1)}x`;
+      chart.innerHTML = `
+        <svg viewBox="0 0 ${width} ${height}" width="100%" height="260">
+          <rect x="0" y="0" width="${width}" height="${height}" fill="transparent" />
+          <line x1="${marginLeft}" y1="${marginTop}" x2="${marginLeft}" y2="${marginTop + plotHeight}" stroke="#475569" stroke-width="1" />
+          <line x1="${marginLeft}" y1="${baseline}" x2="${marginLeft + plotWidth}" y2="${baseline}" stroke="#475569" stroke-width="1" />
+          ${yLabels.map(item => `<line x1="${marginLeft - 5}" y1="${item.y}" x2="${marginLeft + plotWidth}" y2="${item.y}" stroke="#334155" stroke-width="1" stroke-dasharray="3 4" />
+          <text x="${marginLeft - 8}" y="${item.y + 4}" fill="#94a3b8" font-size="10" text-anchor="end">${item.value.toFixed(0)}</text>`).join('')}
+          ${xLabels.map(item => `<text x="${item.x}" y="${baseline + 18}" fill="#94a3b8" font-size="10" text-anchor="middle">${item.label}</text>`).join('')}
+          <polyline fill="none" stroke="#38bdf8" stroke-width="2" points="${points}" />
+          ${visibleCloses.map((value, index) => {
+            const x = marginLeft + (index / Math.max(1, visibleCloses.length - 1)) * plotWidth;
+            const y = marginTop + plotHeight - ((value - minValue) / range) * plotHeight;
+            return `<circle cx="${x}" cy="${y}" r="3" fill="#60a5fa" />`;
+          }).join('')}
+          <rect x="${marginLeft}" y="${marginTop}" width="${plotWidth}" height="${plotHeight}" fill="transparent" />
+        </svg>
+      `;
+
+      const svg = chart.querySelector('svg');
+      svg.style.cursor = 'crosshair';
+      svg.addEventListener('mousemove', event => {
+        const rect = svg.getBoundingClientRect();
+        const scale = rect.width / width;
+        const actualMarginLeft = marginLeft * scale;
+        const actualPlotWidth = plotWidth * scale;
+        const mouseX = event.clientX - rect.left - actualMarginLeft;
+        if (mouseX < 0 || mouseX > actualPlotWidth) {
+          tooltip.style.display = 'none';
+          return;
+        }
+        const pointIndex = Math.round((mouseX / actualPlotWidth) * (visibleCloses.length - 1));
+        const value = visibleCloses[pointIndex];
+        const date = getDateLabel(visibleTimestamps[pointIndex], startIndex + pointIndex);
+        tooltip.textContent = `${symbol} ${date} ₹${value.toFixed(2)}`;
+        tooltip.style.display = 'block';
+        const tooltipWidth = tooltip.offsetWidth || 140;
+        const tooltipX = event.clientX - rect.left + 10;
+        const tooltipY = event.clientY - rect.top - 40;
+        tooltip.style.left = `${Math.min(rect.width - tooltipWidth - 10, Math.max(10, tooltipX))}px`;
+        tooltip.style.top = `${Math.max(8, tooltipY)}px`;
+      });
+      svg.addEventListener('mouseleave', () => {
+        tooltip.style.display = 'none';
+      });
+    }
+
+    function zoomIn() {
+      const index = zoomLevels.indexOf(currentZoomLevel);
+      if (index < zoomLevels.length - 1) {
+        currentZoomLevel = zoomLevels[index + 1];
+        updateZoomButtons();
+        if (lastChartData) {
+          renderChart(lastChartData.closes, lastChartData.timestamps, lastChartData.symbol);
+        }
+      }
+    }
+
+    function zoomOut() {
+      const index = zoomLevels.indexOf(currentZoomLevel);
+      if (index > 0) {
+        currentZoomLevel = zoomLevels[index - 1];
+        updateZoomButtons();
+        if (lastChartData) {
+          renderChart(lastChartData.closes, lastChartData.timestamps, lastChartData.symbol);
+        }
+      }
+    }
+
+    async function loadSymbolData() {
+      const symbol = document.getElementById('symbolInput').value.trim().toUpperCase();
+      if (!symbol) return;
+      document.getElementById('chartError').textContent = '';
+      document.getElementById('chart').innerHTML = 'Loading chart data...';
+
+      try {
+        const payload = await fetchJson(`${apiRoot}/chart?symbol=${encodeURIComponent(symbol)}`);
+        if (!payload || payload.error || !payload.chart?.result?.length) {
+          showChartMessage(payload?.error ?? 'Unable to load chart data from Yahoo Finance.');
+          return;
+        }
+
+        const closes = payload.chart.result[0].indicators.quote[0].close || [];
+        const timestamps = payload.chart.result[0].timestamp || [];
+        if (!Array.isArray(closes) || !closes.length) {
+          showChartMessage('No chart data available for this symbol.');
+          return;
+        }
+        lastChartData = { symbol, closes, timestamps };
+        renderChart(closes, timestamps, symbol);
+      } catch (error) {
+        showChartMessage('Unable to load chart data from Yahoo Finance.');
+      }
+    }
+
+    themeToggle.addEventListener('click', toggleTheme);
+    refreshBtn.addEventListener('click', loadDashboardData);
+    document.getElementById('loadChartBtn').addEventListener('click', loadSymbolData);
+    document.getElementById('zoomInBtn').addEventListener('click', zoomIn);
+    document.getElementById('zoomOutBtn').addEventListener('click', zoomOut);
+    document.addEventListener('DOMContentLoaded', () => {
+      const savedTheme = localStorage.getItem('dashboard-theme') || 'dark';
+      applyTheme(savedTheme);
+      loadSymbolOptions().then(loadDashboardData);
+    });
+  </script>
+</body>
+</html>
