@@ -58,9 +58,6 @@ async def scan_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     services = context.application.bot_data["services"]
     storage = services["storage"]
 
-    if scan_completed_today(storage):
-        await update.message.reply_text("Daily buy signal already issued today. No new buy signal will be posted until the next trading day.")
-        return
 
     await update.message.reply_text("Scanning NSE stocks. This can take a little time...")
     recommendations = services["scanner"].scan()
@@ -189,7 +186,7 @@ def mark_scan_completed(storage):
 
     history = storage.load_daily_buys()
 
-    today = date.today().isoformat()
+    today = ist_today().isoformat()
 
     if today not in history:
         history[today] = []
@@ -208,8 +205,6 @@ async def scheduled_scan(context: ContextTypes.DEFAULT_TYPE):
     if not is_market_open():
         return
 
-    if scan_completed_today(storage):
-        return
 
     try:
         recommendations = services["scanner"].scan()
@@ -285,6 +280,7 @@ def format_recommendations(recommendations) -> str:
     for item in recommendations:
         lines.append(
             f"\n<b>{escape(item.symbol)}</b> @ {item.price:.2f} | Score: {item.score:.1f}\n"
+            f"Qty: {item.quantity} | Size: ₹{item.position_size:.2f} | Risk: ₹{item.risk_amount:.2f}\n"
             f"SL: {item.stop_loss:.2f} | Target: {item.target:.2f}\n"
             f"RSI: {item.rsi:.1f} | Vol: {item.volume_ratio:.2f}x\n"
             f"{escape(item.reason)}\n"
@@ -318,6 +314,7 @@ def run_bot(settings: Settings) -> None:
 
     if application.job_queue:
         application.job_queue.run_daily(scheduled_scan, time=settings.daily_scan_time)
+        application.job_queue.run_repeating(scheduled_scan, interval=settings.scan_interval_minutes * 60, first=120)
         application.job_queue.run_repeating(scheduled_monitor, interval=settings.monitor_interval_minutes * 60, first=120)
 
     logger.info("Telegram polling started")

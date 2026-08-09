@@ -36,10 +36,17 @@ Key `.env` settings:
 - `MIN_STOCK_PRICE` - Minimum stock price considered by the scanner.
 - `MAX_STOCK_PRICE` - Maximum stock price considered by the scanner.
 - `MIN_RECOMMENDATIONS` - Minimum qualified signals required to send a daily alert; default `1`.
-- `MINIMUM_VOLUME_RATIO` - Minimum current volume relative to its 20-day average; default `1.1`.
+- `MINIMUM_VOLUME_RATIO` - Minimum current volume relative to its 20-day average; default `1.0`.
 - `MAX_RECOMMENDATIONS` - Maximum recommendations returned per scan.
-- `SCAN_INTERVAL_MINUTES` - How often scheduled BUY scans run during market hours.
-- `MONITOR_INTERVAL_MINUTES` - How often active positions are checked during market hours.
+- `SCAN_INTERVAL_MINUTES` - How often scheduled BUY scans run during market hours; default `30` minutes.
+- `MONITOR_INTERVAL_MINUTES` - How often active positions are checked during market hours; default `30` minutes.
+- `HISTORY_PERIOD` - History lookback period for intraday scans; default `60d`.
+- `HISTORY_INTERVAL` - History interval for intraday scans; default `30m`.
+- `SYMBOLS_FILE` - Optional path to an NSE symbol list CSV instead of default `data/nse_symbols.csv`.
+- `PORTFOLIO_SIZE` - Paper portfolio size used for position sizing and risk controls.
+- `RISK_PER_TRADE_PCT` - Percent of the portfolio risked per trade.
+- `MAX_POSITION_VALUE_PCT` - Maximum notional position size as percent of the portfolio.
+- `PAPER_TRADING` - Set `true` for paper trading only; the bot stores trade ideas and positions without live brokerage execution.
 - `DEFAULT_QUANTITY` - Quantity saved when the bot opens a tracked paper position.
 - `STOP_LOSS_PCT` - Percent below entry price used for initial stop loss. Example: `3` means 3 percent below entry.
 - `TARGET_PCT` - Percent above entry price used for target booking. Example: `6` means 6 percent above entry.
@@ -78,6 +85,13 @@ python dashboard_server.py --port 8000
 Then open `http://<server-ip>:8000/dashboard.html`. Do not serve the
 `reports` directory with `python -m http.server`; that server cannot access
 the bot data directory, which causes the dashboard to show false zero counts.
+
+Dashboard API endpoints:
+
+- `/api/positions` — current active positions
+- `/api/history` — recent buy/sell signal history
+- `/api/daily-summary` — today’s buy/sell counts and active positions
+- `/api/scan-summary` — recent scan activity, qualified signals, and recommendation averages
 
 Telegram commands:
 

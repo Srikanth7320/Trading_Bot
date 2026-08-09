@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime
 
 from config import Settings
 from core.ai_score import AIScorer
@@ -54,8 +55,15 @@ class Scanner:
             ):
                 continue
             try:
-                history = self.market.get_history(symbol)
-                if history.empty or len(history) < 60:
+                history = self.market.get_history(
+                    symbol,
+                    period=self.settings.history_period,
+                    interval=self.settings.history_interval,
+                )
+                if history.empty or len(history) < 200:
+                    if self.settings.history_interval != "1d":
+                        history = self.market.get_history(symbol, period="6mo", interval="1d")
+                if history.empty or len(history) < 80:
                     continue
                 enriched = add_indicators(history).dropna()
                 if enriched.empty:
@@ -65,9 +73,17 @@ class Scanner:
                 if not self.risk.price_allowed(price):
                     continue
 
+                daily_latest = None
+                if self.settings.history_interval != "1d":
+                    daily_history = self.market.get_history(symbol, period="6mo", interval="1d")
+                    if not daily_history.empty and len(daily_history) >= 80:
+                        daily_enriched = add_indicators(daily_history).dropna()
+                        if not daily_enriched.empty:
+                            daily_latest = daily_enriched.iloc[-1]
+
                 news_items = self.news.fetch(symbol)
                 news_score = self.news.score(news_items)
-                technical_score = self.ai.technical_score(latest)
+                technical_score = self.ai.technical_score(latest, daily_latest)
                 final_score = max(0.0, min(100.0, technical_score + news_score))
 
                 rejection = self._entry_gate_failure(latest, final_score, news_score)
@@ -83,7 +99,15 @@ class Scanner:
                 logger.exception("Scan failed for %s: %s", raw_symbol, exc)
 
         recommendations.sort(key=lambda item: item.score, reverse=True)
-        selected = recommendations[: self.settings.max_recommendations]
+        selected = self._select_recommendations(recommendations)
+        scan_metric = {
+            "created_at": self._now_iso(),
+            "symbols_scanned": len(self.settings.symbols),
+            "qualified": len(recommendations),
+            "recommended": len(selected),
+            "rejected_by_gate": rejected_by_gate,
+        }
+        self.storage.append_scan_metric(scan_metric)
         logger.info(
             "Scan diagnostics: %s qualified; rejected by entry gate: %s",
             len(recommendations),
@@ -97,28 +121,60 @@ class Scanner:
     def _passes_entry_gate(self, latest, score: float, news_score: float) -> bool:
         return self._entry_gate_failure(latest, score, news_score) is None
 
+    def _price_bucket(self, price: float) -> str:
+        if price < 150:
+            return "low"
+        if price < 400:
+            return "mid"
+        return "high"
+
+    def _select_recommendations(self, recommendations: list[Recommendation]) -> list[Recommendation]:
+        if not recommendations:
+            return []
+
+        buckets: dict[str, int] = {}
+        selected: list[Recommendation] = []
+
+        for recommendation in recommendations:
+            bucket = self._price_bucket(recommendation.price)
+            if buckets.get(bucket, 0) < 2:
+                selected.append(recommendation)
+                buckets[bucket] = buckets.get(bucket, 0) + 1
+            if len(selected) >= self.settings.max_recommendations:
+                break
+
+        if len(selected) < self.settings.max_recommendations:
+            for recommendation in recommendations:
+                if recommendation not in selected:
+                    selected.append(recommendation)
+                if len(selected) >= self.settings.max_recommendations:
+                    break
+
+        return selected
+
     def _entry_gate_failure(self, latest, score: float, news_score: float) -> str | None:
         settings = getattr(self, "settings", None)
-        minimum_buy_score = getattr(settings, "minimum_buy_score", 75.0)
+        minimum_buy_score = getattr(settings, "minimum_buy_score", 65.0)
         if score < minimum_buy_score:
             return "score"
 
         rsi = float(latest.get("RSI", 0))
-        if not 45 <= rsi <= 75:
+        if not 40 <= rsi <= 80:
             return "RSI"
 
         macd = float(latest.get("MACD", 0))
         signal = float(latest.get("MACD_SIGNAL", 0))
-        # A bullish crossover below zero can be an earlier, valid recovery
-        # entry. The positive trend filters below remain mandatory.
         if macd <= signal:
             return "MACD crossover"
 
         close = float(latest.get("Close", 0))
-        if close <= float(latest.get("SMA20", 0)):
-            return "price/SMA20"
+        if close <= float(latest.get("EMA20", 0)):
+            return "price/EMA20"
 
-        if float(latest.get("EMA20", 0)) <= float(latest.get("EMA50", 0)):
+        ema20 = float(latest.get("EMA20", 0))
+        ema50 = float(latest.get("EMA50", 0))
+        ema200 = float(latest.get("EMA200", 0))
+        if not (ema20 > ema50 or ema50 > ema200):
             return "EMA trend"
 
         minimum_volume_ratio = getattr(settings, "minimum_volume_ratio", 1.1)
@@ -129,6 +185,10 @@ class Scanner:
             return "momentum"
 
         return None
+
+    @staticmethod
+    def _now_iso() -> str:
+        return datetime.utcnow().isoformat(timespec="seconds") + "Z"
 
     def _reason(self, latest, score: float, news_score: float) -> str:
         parts = [f"score {score:.1f}"]

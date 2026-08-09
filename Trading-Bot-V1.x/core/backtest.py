@@ -10,8 +10,6 @@ from core.indicators import add_indicators
 from core.market_data import MarketDataClient
 from core.news import NewsClient
 from core.risk import RiskEngine
-from core.scanner import Scanner
-from core.sell_engine import SellEngine
 from core.storage import Storage
 
 
@@ -46,7 +44,7 @@ class SimpleBacktester:
         for symbol in symbols:
             try:
                 history = self.market.get_history(symbol, period="1y", interval="1d")
-                if history.empty or len(history) < 60:
+                if history.empty or len(history) < 90:
                     continue
 
                 enriched = add_indicators(history).dropna()
@@ -54,45 +52,68 @@ class SimpleBacktester:
                     continue
 
                 for idx in range(60, len(enriched)):
-                    snapshot = enriched.iloc[idx]
                     latest = enriched.iloc[idx]
                     if not self._should_buy(latest):
                         continue
 
-                    entry_price = float(snapshot["Close"])
+                    recommendation = self.risk.build_recommendation(
+                        symbol=symbol,
+                        latest=latest,
+                        score=self.ai.technical_score(latest, latest),
+                        reason="Backtest entry",
+                        news_score=0.0,
+                        ai_note="Backtest simulated trade.",
+                    )
+                    entry_price = recommendation.price
+                    stop_loss = recommendation.stop_loss
+                    target = recommendation.target
                     entry_date = str(enriched.index[idx])
                     exit_price = None
                     exit_date = None
                     reason = ""
-                    for future_idx in range(idx + 1, len(enriched)):
+
+                    for future_idx in range(idx + 1, min(len(enriched), idx + self.settings.max_holding_days + 1)):
                         future = enriched.iloc[future_idx]
                         current_price = float(future["Close"])
                         pnl_pct = ((current_price - entry_price) / entry_price) * 100
-                        if current_price <= entry_price * 0.97:
+                        macd = float(future.get("MACD", 0))
+                        signal = float(future.get("MACD_SIGNAL", 0))
+                        ema20 = float(future.get("EMA20", current_price))
+                        ema50 = float(future.get("EMA50", current_price))
+
+                        if current_price <= stop_loss:
                             exit_price = current_price
                             exit_date = str(enriched.index[future_idx])
                             reason = "stop loss"
                             break
-                        if pnl_pct >= 6:
+                        if current_price >= target:
                             exit_price = current_price
                             exit_date = str(enriched.index[future_idx])
                             reason = "target"
                             break
-                        if future_idx - idx >= 20:
+                        if future_idx - idx >= 2 and macd < signal and pnl_pct > 1.5:
                             exit_price = current_price
                             exit_date = str(enriched.index[future_idx])
-                            reason = "hold period"
+                            reason = "bearish MACD crossover"
+                            break
+                        if future_idx - idx >= 2 and ema20 < ema50 and pnl_pct > 2:
+                            exit_price = current_price
+                            exit_date = str(enriched.index[future_idx])
+                            reason = "EMA bearish cross"
                             break
 
                     if exit_price is None:
-                        continue
+                        last_idx = min(len(enriched) - 1, idx + self.settings.max_holding_days)
+                        exit_price = float(enriched.iloc[last_idx]["Close"])
+                        exit_date = str(enriched.index[last_idx])
+                        reason = "max hold"
 
                     trades.append(
                         BacktestTrade(
                             symbol=symbol,
                             entry_date=entry_date,
                             entry_price=entry_price,
-                            exit_date=exit_date or entry_date,
+                            exit_date=exit_date,
                             exit_price=float(exit_price),
                             pnl_pct=((float(exit_price) - entry_price) / entry_price) * 100,
                             reason=reason,
@@ -116,14 +137,36 @@ class SimpleBacktester:
         }
 
     def _should_buy(self, latest) -> bool:
-        if float(latest.get("RSI", 0)) < 45 or float(latest.get("RSI", 0)) > 75:
+        price = float(latest.get("Close", 0))
+        if not self.risk.price_allowed(price):
             return False
-        if float(latest.get("MACD", 0)) <= float(latest.get("MACD_SIGNAL", 0)):
+
+        score = self.ai.technical_score(latest, latest)
+        if score < self.settings.minimum_buy_score:
             return False
-        if float(latest.get("Close", 0)) <= float(latest.get("SMA20", 0)):
+
+        rsi = float(latest.get("RSI", 0))
+        if not 40 <= rsi <= 80:
             return False
-        if float(latest.get("EMA20", 0)) <= float(latest.get("EMA50", 0)):
+
+        macd = float(latest.get("MACD", 0))
+        signal = float(latest.get("MACD_SIGNAL", 0))
+        if macd <= signal:
             return False
-        if float(latest.get("VOLUME_RATIO", 0)) < 1.2:
+
+        if price <= float(latest.get("EMA20", 0)):
             return False
+
+        ema20 = float(latest.get("EMA20", 0))
+        ema50 = float(latest.get("EMA50", 0))
+        ema200 = float(latest.get("EMA200", 0))
+        if not (ema20 > ema50 or ema50 > ema200):
+            return False
+
+        if float(latest.get("VOLUME_RATIO", 0)) < self.settings.minimum_volume_ratio:
+            return False
+
+        if float(latest.get("MOMENTUM20", 0)) <= 0:
+            return False
+
         return True

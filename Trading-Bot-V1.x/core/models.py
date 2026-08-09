@@ -24,6 +24,9 @@ class Recommendation:
     macd: float
     signal: float
     volume_ratio: float
+    quantity: int = 1
+    position_size: float = 0.0
+    risk_amount: float = 0.0
     news_score: float = 0.0
     ai_note: str = ""
     created_at: str = field(default_factory=lambda: datetime.now().isoformat(timespec="seconds"))

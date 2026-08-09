@@ -41,7 +41,7 @@ class AIScorer:
 
     ##############################################################
 
-    def technical_score(self, latest) -> float:
+    def technical_score(self, latest, daily_latest=None) -> float:
 
         score = 0
 
@@ -188,6 +188,25 @@ class AIScorer:
             score += 10
         else:
             score -= 4
+
+        if float(latest.get("EMA20", 0)) > float(latest.get("EMA50", 0)):
+            score += 4
+        if float(latest.get("EMA50", 0)) > float(latest.get("EMA200", 0)):
+            score += 4
+        if float(latest.get("Close", 0)) > float(latest.get("SMA50", close)):
+            score += 3
+        if float(latest.get("BB_POSITION", 0.5)) > 0.7:
+            score += 2
+
+        if daily_latest is not None:
+            if float(daily_latest.get("Close", 0)) > float(daily_latest.get("EMA20", 0)):
+                score += 5
+            if float(daily_latest.get("EMA20", 0)) > float(daily_latest.get("EMA50", 0)):
+                score += 4
+            if float(daily_latest.get("EMA50", 0)) > float(daily_latest.get("EMA200", 0)):
+                score += 4
+            if float(daily_latest.get("RSI", 0)) < 70:
+                score += 2
 
         ##########################################################
 

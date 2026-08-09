@@ -19,6 +19,7 @@ class Storage:
         self.hourly_tracking_file = self.data_dir / "hourly_tracking.csv"
         self.signal_history_file = self.data_dir / "signal_history.csv"
         self.daily_buy_history_file = self.data_dir / "daily_buy_history.json"
+        self.scan_metrics_file = self.data_dir / "scan_metrics.json"
 
     def _read_json(self, path: Path, default: Any) -> Any:
         if not path.exists():
@@ -55,6 +56,15 @@ class Storage:
         history = self._read_json(self.history_file, [])
         history.append(row)
         self._write_json(self.history_file, history[-1000:])
+
+    def append_scan_metric(self, scan_metric: dict[str, Any]) -> None:
+        metrics = self._read_json(self.scan_metrics_file, [])
+        metrics.append(scan_metric)
+        self._write_json(self.scan_metrics_file, metrics[-50:])
+
+    def load_scan_metrics(self, count: int = 10) -> list[dict[str, Any]]:
+        metrics = self._read_json(self.scan_metrics_file, [])
+        return metrics[-count:]
 
     def append_tracking(self, row: dict[str, Any]) -> None:
         self._append_csv(self.hourly_tracking_file, row)

@@ -13,8 +13,14 @@ class RiskEngine:
     def build_recommendation(self, symbol: str, latest, score: float, reason: str, news_score: float, ai_note: str) -> Recommendation:
         price = float(latest["Close"])
         atr = float(latest.get("ATR14") or 0)
-        stop_distance = max(price * (self.settings.stop_loss_pct / 100), atr * 1.2 if atr > 0 else 0)
+        stop_distance = max(price * (self.settings.stop_loss_pct / 100), atr * 1.2 if atr > 0 else price * (self.settings.stop_loss_pct / 100))
         target_distance = max(price * (self.settings.target_pct / 100), stop_distance * 1.5)
+        risk_amount = self.settings.portfolio_size * (self.settings.risk_per_trade_pct / 100)
+        max_notional = self.settings.portfolio_size * (self.settings.max_position_value_pct / 100)
+        quantity = int(risk_amount // stop_distance) if stop_distance > 0 else self.settings.default_quantity
+        if quantity < 1:
+            quantity = max(1, min(self.settings.default_quantity, int(max_notional // price) if price > 0 else 1))
+        position_size = round(min(max_notional, quantity * price), 2)
         return Recommendation(
             symbol=symbol,
             price=round(price, 2),
@@ -27,6 +33,9 @@ class RiskEngine:
             macd=round(float(latest.get("MACD", 0)), 4),
             signal=round(float(latest.get("MACD_SIGNAL", 0)), 4),
             volume_ratio=round(float(latest.get("VOLUME_RATIO", 0)), 2),
+            quantity=quantity,
+            position_size=position_size,
+            risk_amount=round(min(risk_amount, stop_distance * quantity), 2),
             news_score=round(news_score, 2),
             ai_note=ai_note,
         )
@@ -35,7 +44,7 @@ class RiskEngine:
         return Position(
             symbol=recommendation.symbol,
             entry_price=recommendation.price,
-            quantity=self.settings.default_quantity,
+            quantity=recommendation.quantity,
             stop_loss=recommendation.stop_loss,
             target=recommendation.target,
             highest_price=recommendation.price,

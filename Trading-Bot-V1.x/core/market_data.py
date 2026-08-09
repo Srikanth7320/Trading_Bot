@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 class MarketDataClient:
-    def get_history(self, symbol: str, period: str = "6mo", interval: str = "1d") -> pd.DataFrame:
+    def get_history(self, symbol: str, period: str = "60d", interval: str = "1h") -> pd.DataFrame:
         if yf is None:
             logger.warning("yfinance is not installed; skipping market data fetch for %s", symbol)
             return pd.DataFrame(columns=["Open", "High", "Low", "Close", "Volume"])
@@ -27,6 +27,12 @@ class MarketDataClient:
             return pd.DataFrame(columns=["Open", "High", "Low", "Close", "Volume"])
 
         if frame.empty:
+            if interval in {"1m", "2m", "5m", "15m", "30m"}:
+                logger.info("Retrying market data for %s with interval 1h after empty %s response", ticker, interval)
+                return self.get_history(symbol, period=period, interval="1h")
+            if interval == "1h":
+                logger.info("Retrying market data for %s with interval 1d after empty 1h response", ticker)
+                return self.get_history(symbol, period=period, interval="1d")
             logger.warning("No market data returned for %s", ticker)
             return frame
 

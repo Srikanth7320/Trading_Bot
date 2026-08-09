@@ -5,6 +5,8 @@ from pathlib import Path
 from datetime import time
 from zoneinfo import ZoneInfo
 
+from core.universe import load_symbols_from_csv
+
 try:
     from dotenv import load_dotenv
 except ImportError:  # pragma: no cover - dotenv is optional at import time
@@ -45,33 +47,6 @@ def _env_bool(name: str, default: bool) -> bool:
     return value.lower() in {"1", "true", "yes", "on"}
 
 
-def load_symbols_from_csv(path: Path) -> list[str]:
-    if not path.exists():
-        raise RuntimeError(f"NSE symbols file is missing: {path}")
-
-    symbols: list[str] = []
-    with path.open("r", newline="", encoding="utf-8-sig") as file:
-        reader = csv.DictReader(file)
-        if not reader.fieldnames:
-            raise RuntimeError(f"NSE symbols file has no header row: {path}")
-
-        symbol_column = next(
-            (name for name in reader.fieldnames if name.strip().lower() in {"symbol", "tradingsymbol", "ticker"}),
-            reader.fieldnames[0],
-        )
-
-        for row in reader:
-            raw_symbol = (row.get(symbol_column) or "").strip().upper()
-            if not raw_symbol:
-                continue
-            symbols.append(raw_symbol.replace(".NS", ""))
-
-    unique_symbols = list(dict.fromkeys(symbols))
-    if not unique_symbols:
-        raise RuntimeError(f"NSE symbols file is empty: {path}")
-    return unique_symbols
-
-
 @dataclass(frozen=True)
 class Settings:
     telegram_bot_token: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
@@ -85,11 +60,13 @@ class Settings:
     reports_dir: Path = BASE_DIR / "reports"
 
     min_price: float = _env_float("MIN_STOCK_PRICE", 10.0)
-    max_price: float = _env_float("MAX_STOCK_PRICE", 500.0)
+    max_price: float = _env_float("MAX_STOCK_PRICE", 1000.0)
     max_recommendations: int = _env_int("MAX_RECOMMENDATIONS", 5)
     min_recommendations: int = _env_int("MIN_RECOMMENDATIONS", 1)
-    scan_interval_minutes: int = _env_int("SCAN_INTERVAL_MINUTES", 60)
-    monitor_interval_minutes: int = _env_int("MONITOR_INTERVAL_MINUTES", 60)
+    scan_interval_minutes: int = _env_int("SCAN_INTERVAL_MINUTES", 30)
+    monitor_interval_minutes: int = _env_int("MONITOR_INTERVAL_MINUTES", 30)
+    history_period: str = os.getenv("HISTORY_PERIOD", "60d")
+    history_interval: str = os.getenv("HISTORY_INTERVAL", "30m")
     default_quantity: int = _env_int("DEFAULT_QUANTITY", 1)
 
     stop_loss_pct: float = _env_float("STOP_LOSS_PCT", 3.0)
@@ -99,15 +76,20 @@ class Settings:
     enable_ai: bool = _env_bool("ENABLE_AI", True)
     enable_news: bool = _env_bool("ENABLE_NEWS", True)
 
-    symbols_file: Path = BASE_DIR / "data" / "nse_symbols.csv"
-    symbols: list[str] = field(default_factory=lambda: load_symbols_from_csv(BASE_DIR / "data" / "nse_symbols.csv"))
+    portfolio_size: float = _env_float("PORTFOLIO_SIZE", 100000.0)
+    risk_per_trade_pct: float = _env_float("RISK_PER_TRADE_PCT", 1.0)
+    max_position_value_pct: float = _env_float("MAX_POSITION_VALUE_PCT", 5.0)
+    paper_trading: bool = _env_bool("PAPER_TRADING", True)
+
+    symbols_file: Path = Path(os.getenv("SYMBOLS_FILE", str(BASE_DIR / "data" / "nifty200.csv")))
+    symbols: list[str] = field(default_factory=lambda: load_symbols_from_csv(Path(os.getenv("SYMBOLS_FILE", str(BASE_DIR / "data" / "nifty200.csv")))))
 
     # Daily Scan
     daily_scan_time: str = _env_time("DAILY_SCAN_TIME", "09:20")
 
     # Trading Filters
-    minimum_buy_score: float = _env_float("MINIMUM_BUY_SCORE", 75.0)
-    minimum_volume_ratio: float = _env_float("MINIMUM_VOLUME_RATIO", 1.1)
+    minimum_buy_score: float = _env_float("MINIMUM_BUY_SCORE", 65.0)
+    minimum_volume_ratio: float = _env_float("MINIMUM_VOLUME_RATIO", 1.0)
 
     # Holding
     max_holding_days: int = _env_int("MAX_HOLDING_DAYS", 30)
@@ -131,7 +113,7 @@ def validate_required_settings(active_settings: Settings) -> None:
     if not active_settings.news_api_key:
         missing.append("NEWS_API_KEY")
     if not active_settings.symbols:
-        missing.append("data/nse_symbols.csv must contain at least one symbol")
+        missing.append(f"{active_settings.symbols_file} must contain at least one symbol")
     if not active_settings.enable_ai:
         missing.append("ENABLE_AI must be true")
     if not active_settings.enable_news:
