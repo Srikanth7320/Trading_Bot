@@ -4,6 +4,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import platform
+import shutil
 import urllib.request
 from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
@@ -34,6 +37,8 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             return self._send_json(settings.symbols)
         if route == "/api/chart":
             return self._send_json(self._chart_data())
+        if route == "/api/system-info":
+            return self._send_json(self._system_info())
         if route in {"/", "/dashboard.html"}:
             self.path = "/dashboard.html"
         return super().do_GET()
@@ -108,6 +113,65 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             "active_positions": len(storage.load_positions()),
             "buy_signals": sum(str(item.get("action", "")).upper() == "BUY" for item in today_history),
             "sell_signals": sum(str(item.get("action", "")).upper() == "SELL" for item in today_history),
+        }
+
+    @staticmethod
+    def _get_memory_info() -> dict[str, float]:
+        def parse_meminfo() -> dict[str, int]:
+            result = {}
+            try:
+                with open("/proc/meminfo", "r", encoding="utf-8") as handle:
+                    for line in handle:
+                        key, value = line.split(":", 1)
+                        result[key.strip()] = int(value.strip().split()[0])
+            except OSError:
+                pass
+            return result
+
+        meminfo = parse_meminfo()
+        total_kb = meminfo.get("MemTotal")
+        available_kb = meminfo.get("MemAvailable") or meminfo.get("MemFree")
+        if total_kb and available_kb:
+            total_gb = round(total_kb / 1024 / 1024, 2)
+            available_gb = round(available_kb / 1024 / 1024, 2)
+            used_pct = round((1 - available_kb / total_kb) * 100, 1)
+            return {"total_gb": total_gb, "available_gb": available_gb, "used_percent": used_pct}
+
+        try:
+            page_size = os.sysconf("SC_PAGE_SIZE")
+            phys_pages = os.sysconf("SC_PHYS_PAGES")
+            avail_pages = os.sysconf("SC_AVPHYS_PAGES")
+            total_gb = round(page_size * phys_pages / 1024**3, 2)
+            available_gb = round(page_size * avail_pages / 1024**3, 2)
+            used_pct = round((1 - avail_pages / phys_pages) * 100, 1)
+            return {"total_gb": total_gb, "available_gb": available_gb, "used_percent": used_pct}
+        except (ValueError, OSError):
+            return {"total_gb": 0.0, "available_gb": 0.0, "used_percent": 0.0}
+
+    @staticmethod
+    def _system_info() -> dict:
+        mem = DashboardHandler._get_memory_info()
+        try:
+            disk = shutil.disk_usage("/")
+            total_disk_gb = round(disk.total / 1024**3, 2)
+            free_disk_gb = round(disk.free / 1024**3, 2)
+            used_disk_pct = round((disk.total - disk.free) / disk.total * 100, 1)
+        except OSError:
+            total_disk_gb = free_disk_gb = used_disk_pct = 0.0
+
+        uname = platform.uname()
+        return {
+            "os": platform.platform(),
+            "hostname": uname.node,
+            "architecture": uname.machine,
+            "processor": uname.processor or platform.processor() or "Unknown",
+            "total_memory_gb": mem["total_gb"],
+            "available_memory_gb": mem["available_gb"],
+            "memory_used_percent": mem["used_percent"],
+            "total_storage_gb": total_disk_gb,
+            "free_storage_gb": free_disk_gb,
+            "storage_used_percent": used_disk_pct,
+            "note": "This is AI Tool developed by K.V.Srikanth",
         }
 
 

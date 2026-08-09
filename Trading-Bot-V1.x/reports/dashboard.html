@@ -17,7 +17,8 @@
       --table-border: #334155;
       --button-bg: #1f2937;
     }
-    body { font-family: Arial, sans-serif; margin: 0; background: var(--bg); color: var(--text); transition: background 0.2s ease, color 0.2s ease; }
+    body { font-family: Arial, sans-serif; margin: 0; background: radial-gradient(circle at top, rgba(56,189,248,0.08), transparent 24%), linear-gradient(135deg, #08121f, #0b172b 55%, #091221 100%); color: var(--text); transition: background 0.2s ease, color 0.2s ease; }
+    body::before { content: ''; position: fixed; inset: 0; background-image: radial-gradient(circle at 20% 20%, rgba(56,189,248,0.08), transparent 18%), radial-gradient(circle at 80% 15%, rgba(59,130,246,0.06), transparent 16%), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px); background-size: 24px 24px; pointer-events: none; opacity: 0.5; }
     body.light-theme {
       --bg: #f8fafc;
       --panel: #ffffff;
@@ -30,26 +31,46 @@
       --table-border: #e2e8f0;
       --button-bg: #e2e8f0;
     }
-    .app { display: flex; min-height: 100vh; }
-    .sidebar { width: 240px; background: var(--panel); padding: 20px; border-right: 1px solid var(--border); }
-    .sidebar h2 { margin-top: 0; font-size: 1.2rem; }
-    .menu-btn { display: block; width: 100%; text-align: left; margin-bottom: 8px; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--panel-2); color: var(--text); cursor: pointer; }
-    .menu-btn.active { background: var(--accent); border-color: #60a5fa; }
-    .content { flex: 1; padding: 20px; }
-    .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 12px; }
-    .topbar-actions { display: flex; gap: 8px; }
-    .panel { background: var(--panel); padding: 16px; border-radius: 10px; margin-bottom: 16px; display: none; }
+    .app { display: flex; min-height: 100vh; position: relative; z-index: 1; }
+    .content { flex: 1; padding: 20px; position: relative; }
+    .content::before { content: ''; position: absolute; inset: 0; background-image: linear-gradient(0deg, rgba(56,189,248,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(56,189,248,0.04) 1px, transparent 1px); opacity: 0.12; pointer-events: none; }
+    .sidebar { width: 260px; background: linear-gradient(180deg, rgba(15,23,42,0.96), rgba(17,24,39,0.98)); padding: 24px 20px; border-right: 1px solid rgba(76,86,106,0.5); position: relative; overflow: hidden; }
+    .sidebar::before { content: ''; position: absolute; inset: 0; background-image: radial-gradient(circle at 20% 20%, rgba(56,189,248,0.08), transparent 16%), radial-gradient(circle at 80% 15%, rgba(59,130,246,0.05), transparent 15%); opacity: 0.45; pointer-events: none; }
+    .sidebar::after { content: ''; position: absolute; inset: 0; background-image: linear-gradient(0deg, rgba(56,189,248,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(56,189,248,0.04) 1px, transparent 1px); opacity: 0.3; pointer-events: none; }
+    .sidebar h2 { margin-top: 0; font-size: 1.25rem; color: #dbeafe; letter-spacing: 0.02em; }
+    .menu-btn { display: block; width: 100%; text-align: left; margin-bottom: 8px; padding: 10px; border-radius: 8px; border: 1px solid rgba(71,85,105,0.6); background: rgba(15,23,42,0.75); color: var(--text); cursor: pointer; position: relative; z-index: 1; }
+    .menu-btn.active { background: rgba(37,99,235,0.24); border-color: rgba(56,189,248,0.45); box-shadow: 0 0 0 1px rgba(56,189,248,0.25), 0 10px 30px rgba(15,23,42,0.2); }
+    .menu-btn:hover { background: rgba(37,99,235,0.18); }
+    .sidebar-hero { position: relative; margin-top: 20px; padding: 18px; border-radius: 18px; border: 1px solid rgba(56,189,248,0.18); background: rgba(15,23,42,0.76); backdrop-filter: blur(10px); display: grid; gap: 10px; z-index: 1; }
+    .sidebar-hero::before { content: ''; position: absolute; top: -10px; right: -10px; width: 80px; height: 80px; background: rgba(56,189,248,0.12); border-radius: 50%; filter: blur(16px); pointer-events: none; }
+    .sidebar-hero-icon { width: 42px; height: 42px; border-radius: 12px; background: rgba(59,130,246,0.18); display: grid; place-items: center; }
+    .sidebar-hero-icon svg { width: 24px; height: 24px; fill: #7dd3fc; }
+    .sidebar-hero-title { font-size: 1rem; font-weight: 700; color: #f1f5f9; }
+    .sidebar-hero-text { font-size: 0.85rem; color: #cbd5e1; line-height: 1.4; }
+    .sidebar-hero-meta { font-size: 0.84rem; color: #cfd8fc; line-height: 1.5; margin-top: 10px; }
+    .sidebar-hero-meta span { display: block; margin-top: 4px; }
+    .panel { background: rgba(15,23,42,0.92); box-shadow: inset 0 0 0 1px rgba(148,163,184,0.05), 0 0 30px rgba(0,0,0,0.08); padding: 16px; border-radius: 10px; margin-bottom: 16px; display: none; }
     .panel.active { display: block; }
+    .panel h3 { color: #dbeafe; }
     table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    th, td { padding: 10px; border-bottom: 1px solid var(--table-border); text-align: left; }
+    th, td { padding: 10px; border-bottom: 1px solid rgba(100,116,139,0.45); text-align: left; }
     th { color: #93c5fd; }
     .positive { color: #4ade80; }
     .negative { color: #f87171; }
     .muted { color: var(--muted); }
-    input, button { padding: 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--button-bg); color: var(--text); }
-    #chart { width: 100%; height: 340px; background: var(--chart-bg); border-radius: 8px; border: 1px solid var(--border); padding: 12px; overflow: hidden; position: relative; }
-    .chart-controls { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
-    .chart-tooltip { position: absolute; display: none; z-index: 2; background: rgba(15, 23, 42, 0.96); color: #e2e8f0; padding: 8px 10px; border-radius: 8px; border: 1px solid rgba(148, 163, 184, 0.35); font-size: 0.9rem; pointer-events: none; white-space: nowrap; }
+    input, button { padding: 8px; border-radius: 6px; border: 1px solid rgba(71,85,105,0.6); background: rgba(15,23,42,0.9); color: var(--text); }
+    #chart { width: 100%; height: 460px; background: rgba(5,12,30,0.95); border-radius: 12px; border: 1px solid rgba(56,189,248,0.18); padding: 12px; overflow: hidden; position: relative; box-shadow: inset 0 0 0 1px rgba(56,189,248,0.04); }
+    .chart-control-row { display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; align-items: center; margin-bottom: 10px; position: relative; z-index: 1; }
+    .chart-controls { display: flex; flex-wrap: wrap; gap: 8px; }
+    .chart-controls button.active { background: rgba(37,99,235,0.9); color: #fff; border-color: rgba(56,189,248,0.4); }
+    .chart-info { font-size: 0.95rem; }
+    .chart-tooltip { position: absolute; display: none; z-index: 2; background: rgba(10,18,36,0.98); color: #e2e8f0; padding: 8px 10px; border-radius: 8px; border: 1px solid rgba(148,163,184,0.35); font-size: 0.9rem; pointer-events: none; white-space: nowrap; }
+    .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+    .stat-card { background: rgba(15,23,42,0.75); padding: 12px; border-radius: 8px; border: 1px solid rgba(56,189,248,0.12); }
+    .panel { background: rgba(15,23,42,0.92); box-shadow: inset 0 0 0 1px rgba(148,163,184,0.05), 0 0 30px rgba(0,0,0,0.08); }
+    .panel h3 { color: #dbeafe; }
+    input, button { background: rgba(15,23,42,0.9); }
+    .chart-decoration { display: none; }
     .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
     .stat-card { background: var(--panel-2); padding: 12px; border-radius: 8px; }
   </style>
@@ -63,6 +84,15 @@
       <button class="menu-btn" data-target="signals">Recent Signals</button>
       <button class="menu-btn" data-target="stock">Stock Viewer</button>
       <!-- <button class="menu-btn" data-target="backtest">Backtest</button> -->
+      <div class="sidebar-hero">
+        <div class="sidebar-hero-icon">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h4m8 0h4M12 4v4m0 8v4m-3-3h6a3 3 0 0 0 3-3V9a3 3 0 0 0-3-3h-6a3 3 0 0 0-3 3v6a3 3 0 0 0 3 3Z" stroke="#93c5fd" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+        </div>
+        <div>
+          <div class="sidebar-hero-title">EC2 System Monitor</div>
+          </div>
+        <div id="systemInfo" class="sidebar-hero-meta">Loading system details...</div>
+      </div>
     </aside>
 
     <main class="content">
@@ -104,9 +134,19 @@
           <select id="symbolInput"></select>
           <button id="loadChartBtn">Load</button>
         </div>
-        <div class="chart-controls">
-          <button id="zoomInBtn" type="button">Zoom In</button>
-          <button id="zoomOutBtn" type="button">Zoom Out</button>
+        <div class="chart-control-row">
+          <div class="chart-controls range-controls">
+            <label style="display:flex; align-items:center; gap:6px; margin:0;">
+              From
+              <select id="fromMonth"></select>
+            </label>
+            <label style="display:flex; align-items:center; gap:6px; margin:0;">
+              To
+              <select id="toMonth"></select>
+            </label>
+            <button id="applyRangeBtn" type="button">Show Range</button>
+          </div>
+          <div id="chartInfo" class="muted chart-info"></div>
         </div>
         <div id="chartContainer" style="position: relative;">
           <div id="chart" class="muted" style="margin-top: 10px; min-height: 200px; display: flex; align-items: center; justify-content: center;">Chart placeholder</div>
@@ -153,9 +193,10 @@
     }
 
     const apiRoot = '/api';
-    let currentZoomLevel = 1;
-    const zoomLevels = [1, 1.5, 2, 3];
     let lastChartData = null;
+    let monthRangeOptions = [];
+    let selectedRangeFrom = 0;
+    let selectedRangeTo = 5;
 
     async function fetchJson(path) {
       const response = await fetch(path);
@@ -229,6 +270,23 @@
       }
     }
 
+    async function loadSystemInfo() {
+      const target = document.getElementById('systemInfo');
+      try {
+        const data = await fetchJson(`${apiRoot}/system-info`);
+        target.innerHTML = `
+          <span><strong>OS:</strong> ${data.os}</span>
+          <span><strong>Host:</strong> ${data.hostname}</span>
+          <span><strong>CPU:</strong> ${data.processor || data.architecture}</span>
+          <span><strong>Memory:</strong> ${data.total_memory_gb} GB (${data.memory_used_percent}% used)</span>
+          <span><strong>Storage:</strong> ${data.total_storage_gb} GB (${data.storage_used_percent}% used)</span>
+          <span>${data.note || 'This is AI Tool developed by K.V.Srikanth'}</span>
+        `;
+      } catch (error) {
+        target.textContent = 'Unable to load system details from EC2.';
+      }
+    }
+
     function renderOverview(positions, history) {
       const overviewStats = document.getElementById('overviewStats');
       const activeCount = positions.length;
@@ -274,10 +332,76 @@
       tooltip.style.display = 'none';
     }
 
-    function updateZoomButtons() {
-      const index = zoomLevels.indexOf(currentZoomLevel);
-      document.getElementById('zoomInBtn').disabled = index >= zoomLevels.length - 1;
-      document.getElementById('zoomOutBtn').disabled = index <= 0;
+    function getLastSixMonths() {
+      const months = [];
+      const now = new Date();
+      for (let offset = 5; offset >= 0; offset -= 1) {
+        const date = new Date(now.getFullYear(), now.getMonth() - offset, 1);
+        const label = date.toLocaleString('default', { month: 'short', year: 'numeric' });
+        months.push({ year: date.getFullYear(), month: date.getMonth(), label });
+      }
+      return months;
+    }
+
+    function populateRangeSelectors() {
+      monthRangeOptions = getLastSixMonths();
+      const fromSelect = document.getElementById('fromMonth');
+      const toSelect = document.getElementById('toMonth');
+      fromSelect.innerHTML = monthRangeOptions.map((option, index) => `<option value="${index}">${option.label}</option>`).join('');
+      toSelect.innerHTML = monthRangeOptions.map((option, index) => `<option value="${index}">${option.label}</option>`).join('');
+      selectedRangeFrom = 0;
+      selectedRangeTo = monthRangeOptions.length - 1;
+      fromSelect.value = selectedRangeFrom;
+      toSelect.value = selectedRangeTo;
+
+      fromSelect.addEventListener('change', () => {
+        selectedRangeFrom = Number(fromSelect.value);
+        if (selectedRangeFrom > selectedRangeTo) {
+          selectedRangeTo = selectedRangeFrom;
+          toSelect.value = selectedRangeTo;
+        }
+      });
+      toSelect.addEventListener('change', () => {
+        selectedRangeTo = Number(toSelect.value);
+        if (selectedRangeTo < selectedRangeFrom) {
+          selectedRangeFrom = selectedRangeTo;
+          fromSelect.value = selectedRangeFrom;
+        }
+      });
+      document.getElementById('applyRangeBtn').addEventListener('click', () => {
+        if (lastChartData) {
+          renderChart(lastChartData.closes, lastChartData.timestamps, lastChartData.symbol);
+        }
+      });
+    }
+
+    function getRangeBounds() {
+      const from = monthRangeOptions[selectedRangeFrom];
+      const to = monthRangeOptions[selectedRangeTo];
+      const startTimestamp = Math.floor(new Date(from.year, from.month, 1).getTime() / 1000);
+      const endTimestamp = Math.floor(new Date(to.year, to.month + 1, 1).getTime() / 1000) - 1;
+      return { startTimestamp, endTimestamp, fromLabel: from.label, toLabel: to.label };
+    }
+
+    function calculateRangeIndexes(closes, timestamps) {
+      if (!Array.isArray(timestamps) || timestamps.length !== closes.length) {
+        return { startIndex: 0, endIndex: closes.length - 1 };
+      }
+      const { startTimestamp, endTimestamp } = getRangeBounds();
+      let startIndex = timestamps.findIndex(ts => ts >= startTimestamp);
+      let endIndex = -1;
+      for (let i = 0; i < timestamps.length; i += 1) {
+        if (timestamps[i] <= endTimestamp) {
+          endIndex = i;
+        } else {
+          break;
+        }
+      }
+      if (startIndex < 0) startIndex = timestamps.length;
+      if (endIndex < 0 || endIndex < startIndex) {
+        return { startIndex: 0, endIndex: -1 };
+      }
+      return { startIndex, endIndex };
     }
 
     function getDateLabel(timestamp, index) {
@@ -290,7 +414,9 @@
 
     function renderChart(closes, timestamps, symbol) {
       const chart = document.getElementById('chart');
+      const chartInfo = document.getElementById('chartInfo');
       const chartMeta = document.getElementById('chartMeta');
+      const chartError = document.getElementById('chartError');
       const tooltip = document.getElementById('chartTooltip');
       const filtered = closes.filter(value => typeof value === 'number' && !Number.isNaN(value));
       if (!filtered.length) {
@@ -298,33 +424,41 @@
         return;
       }
 
-      const visibleCount = Math.max(20, Math.min(closes.length, Math.round(closes.length / currentZoomLevel)));
-      const startIndex = Math.max(0, closes.length - visibleCount);
-      const visibleCloses = closes.slice(startIndex);
-      const visibleTimestamps = timestamps?.slice(startIndex) || visibleCloses.map((_, i) => i);
+      const { startIndex, endIndex } = calculateRangeIndexes(closes, timestamps);
+      const rawVisibleCloses = closes.slice(startIndex, endIndex + 1);
+      const rawVisibleTimestamps = timestamps?.slice(startIndex, endIndex + 1) || rawVisibleCloses.map((_, i) => i);
+      const visibleData = rawVisibleCloses
+        .map((value, index) => ({ value, timestamp: rawVisibleTimestamps[index] }))
+        .filter(item => typeof item.value === 'number' && !Number.isNaN(item.value));
+      if (!visibleData.length) {
+        showChartMessage('No valid chart data available for the selected range.');
+        return;
+      }
+      const visibleCloses = visibleData.map(item => item.value);
+      const visibleTimestamps = visibleData.map(item => item.timestamp);
 
-      const marginLeft = 44;
-      const marginRight = 16;
-      const marginBottom = 42;
-      const marginTop = 16;
+      const marginLeft = 28;
+      const marginRight = 12;
+      const marginBottom = 22;
+      const marginTop = 8;
       const containerWidth = Math.max(380, chart.clientWidth || 380);
       const plotWidth = containerWidth - marginLeft - marginRight;
-      const plotHeight = 230;
+      const plotHeight = 380;
       const width = containerWidth;
       const height = plotHeight + marginTop + marginBottom;
 
       const maxValue = Math.max(...visibleCloses);
       const minValue = Math.min(...visibleCloses);
-      const range = maxValue - minValue || 1;
+      const valueRange = maxValue - minValue || 1;
       const points = visibleCloses.map((value, index) => {
         const x = marginLeft + (index / Math.max(1, visibleCloses.length - 1)) * plotWidth;
-        const y = marginTop + plotHeight - ((value - minValue) / range) * plotHeight;
+        const y = marginTop + plotHeight - ((value - minValue) / valueRange) * plotHeight;
         return `${x},${y}`;
       }).join(' ');
 
       const yTicks = 5;
       const yLabels = Array.from({ length: yTicks }, (_, index) => {
-        const value = maxValue - (range * index) / (yTicks - 1);
+        const value = maxValue - (valueRange * index) / (yTicks - 1);
         const y = marginTop + (plotHeight / (yTicks - 1)) * index;
         return { value, y };
       });
@@ -337,10 +471,15 @@
       });
 
       const baseline = marginTop + plotHeight;
+      const rangeBounds = getRangeBounds();
+      const highValue = Math.max(...visibleCloses);
+      const lowValue = Math.min(...visibleCloses);
+      const lastClose = visibleCloses[visibleCloses.length - 1];
       chartError.textContent = '';
-      chartMeta.textContent = `Showing ${visibleCloses.length} points for ${symbol} • zoom ${currentZoomLevel.toFixed(1)}x`;
+      chartInfo.innerHTML = `High: <b>₹${highValue.toFixed(2)}</b> · Low: <b>₹${lowValue.toFixed(2)}</b> · Last: <b>₹${lastClose.toFixed(2)}</b>`;
+      chartMeta.textContent = `Showing ${visibleCloses.length} points for ${symbol}`;
       chart.innerHTML = `
-        <svg viewBox="0 0 ${width} ${height}" width="100%" height="260">
+        <svg viewBox="0 0 ${width} ${height}" width="100%" height="${height}">
           <rect x="0" y="0" width="${width}" height="${height}" fill="transparent" />
           <line x1="${marginLeft}" y1="${marginTop}" x2="${marginLeft}" y2="${marginTop + plotHeight}" stroke="#475569" stroke-width="1" />
           <line x1="${marginLeft}" y1="${baseline}" x2="${marginLeft + plotWidth}" y2="${baseline}" stroke="#475569" stroke-width="1" />
@@ -350,7 +489,7 @@
           <polyline fill="none" stroke="#38bdf8" stroke-width="2" points="${points}" />
           ${visibleCloses.map((value, index) => {
             const x = marginLeft + (index / Math.max(1, visibleCloses.length - 1)) * plotWidth;
-            const y = marginTop + plotHeight - ((value - minValue) / range) * plotHeight;
+            const y = marginTop + plotHeight - ((value - minValue) / valueRange) * plotHeight;
             return `<circle cx="${x}" cy="${y}" r="3" fill="#60a5fa" />`;
           }).join('')}
           <rect x="${marginLeft}" y="${marginTop}" width="${plotWidth}" height="${plotHeight}" fill="transparent" />
@@ -385,27 +524,6 @@
       });
     }
 
-    function zoomIn() {
-      const index = zoomLevels.indexOf(currentZoomLevel);
-      if (index < zoomLevels.length - 1) {
-        currentZoomLevel = zoomLevels[index + 1];
-        updateZoomButtons();
-        if (lastChartData) {
-          renderChart(lastChartData.closes, lastChartData.timestamps, lastChartData.symbol);
-        }
-      }
-    }
-
-    function zoomOut() {
-      const index = zoomLevels.indexOf(currentZoomLevel);
-      if (index > 0) {
-        currentZoomLevel = zoomLevels[index - 1];
-        updateZoomButtons();
-        if (lastChartData) {
-          renderChart(lastChartData.closes, lastChartData.timestamps, lastChartData.symbol);
-        }
-      }
-    }
 
     async function loadSymbolData() {
       const symbol = document.getElementById('symbolInput').value.trim().toUpperCase();
@@ -436,12 +554,12 @@
     themeToggle.addEventListener('click', toggleTheme);
     refreshBtn.addEventListener('click', loadDashboardData);
     document.getElementById('loadChartBtn').addEventListener('click', loadSymbolData);
-    document.getElementById('zoomInBtn').addEventListener('click', zoomIn);
-    document.getElementById('zoomOutBtn').addEventListener('click', zoomOut);
+    populateRangeSelectors();
     document.addEventListener('DOMContentLoaded', () => {
       const savedTheme = localStorage.getItem('dashboard-theme') || 'dark';
       applyTheme(savedTheme);
       loadSymbolOptions().then(loadDashboardData);
+      loadSystemInfo();
     });
   </script>
 </body>
