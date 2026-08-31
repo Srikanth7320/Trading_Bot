@@ -1,1 +1,127 @@
 symbol,price,score,action,reason,stop_loss,target,rsi,macd,signal,volume_ratio,news_score,ai_note,created_at
+VEDL,280.0,86.0,BUY,"score 86.0, MACD bullish, price above SMA20",271.6,296.8,69.08,1.296,0.8803,1.14,119,5000.0,999.6,0.0,"**VEDL Swing Analysis**
+
+1. **Trend:** Strong bullish. The stock is trading sequentially above its 20-EMA (275.65), 50-EMA, and 200-EMA, indicating robust upward momentum across all timeframes.
+2. **Why Setup is Attractive:** A high Technical Score of 86.0 is backed by a bullish MACD crossover above its signal line and healthy buying pressure (Volume Ratio: 1.14). Strong positive momentum suggests potential for continued upward continuation. 
+3. **Risk:** With the RSI at 69.1, the stock is nearing overbought territory, which could trigger temporary consolidations. Sector-specific commodity volatility is an inherent risk. Consider a stop-loss below the 20-EMA near 275.
+4. **Holding Period:** 2 to 4 weeks, matching typical swing trading horizons.",2026-08-10T03:52:03
+ONGC,242.41,99.0,BUY,"score 99.0, MACD bullish, price above SMA20, volume expansion",235.14,256.95,73.3,0.3993,0.1121,1.46,137,5000.0,996.31,0.0,"**ONGC Swing Analysis**
+
+1. **Trend:** Strongly bullish. Price (242.41) has broken above its EMA20, EMA50, and EMA200, backed by a near-perfect Technical Score of 99.0.
+2. **Why Attractive:** A clean golden-crossover setup with expanding volume (1.46 ratio) and a positive MACD crossover. Momentum indicators suggest high buying pressure. 
+3. **Risk:** RSI at 73.3 indicates overbought levels, which could trigger a minor short-term pullback. Additionally, leadership transition news at the top job may induce temporary volatility.
+4. **Holding Period:** 2 to 3 weeks (Swing trading horizon). 
+
+*Disclaimer: Swing trading involves market risk; maintain strict risk management.*",2026-08-11T03:51:16
+OIL,475.25,96.0,BUY,"score 96.0, MACD bullish, price above SMA20, volume expansion",460.99,503.76,76.19,4.2269,2.8581,1.8,70,5000.0,998.02,0.0,"**Trend:** Strongly bullish. OIL trades well above its sequentially stacked EMAs (20, 50, 200) with a high technical score of 96.0, confirming robust uptrend structure.
+
+**Why Setup is Attractive:** Strong momentum is backed by above-average volume (1.80x) and a bullish MACD crossover. Geopolitical tensions regarding Iran and the Strait of Hormuz provide a powerful macro catalyst likely to drive crude prices, and consequently OIL, higher.
+
+**Risk:** With the RSI at 76.2, the stock is in overbought territory, increasing the risk of short-term profit-booking or mean reversion toward the EMA20 (453.59). 
+
+**Holding Period:** 2 to 3 weeks (Swing horizon).",2026-08-11T03:51:21
+ADANIPOWER,211.53,93.0,BUY,"score 93.0, MACD bullish, price above SMA20, volume expansion",205.18,224.22,65.33,0.3181,0.0593,1.51,157,5000.0,996.31,0.0,"**Trend:** Short-term bullish. ADANIPOWER (211.53) trades above its EMA20 and EMA50, but faces immediate overhead resistance at the EMA200 (212.05).
+
+**Risk:** Failure to clear the EMA200 resistance could trigger a pullback toward the EMA20/50 support cluster (~209). High inherent volatility is typical for this counter.
+
+**Holding Period:** 5 to 10 trading sessions.
+
+**Why This Setup is Attractive:** The stock boasts a high Technical Score of 93.0. Momentum is accelerating, supported by a rising RSI (65.3), a bullish MACD crossover, and strong volume expansion (ratio 1.51). A decisive breakout above the EMA200 (212.05) could trigger a swift swing rally.",2026-08-11T03:50:08
+IDEA,13.06,87.0,BUY,"score 87.0, MACD bullish, price above SMA20, volume expansion",12.67,13.84,66.67,0.0516,0.0418,2.2,2552,5000.0,999.87,0.0,"**Trend:** Short-term bullish. IDEA (13.06) trades above its 20 and 50 EMAs, currently testing the crucial 200 EMA (13.10) resistance. 
+
+**Risk:** High volatility. A failure to cross the 200 EMA could trigger a pullback to the 12.85 support level. 
+
+**Holding Period:** 1 to 3 weeks (Swing).
+
+**Why this Setup is Attractive:** 
+IDEA displays a strong Technical Score of 87.0. The setup is backed by a bullish MACD crossover, robust short-term momentum, and a significant volume surge (Volume Ratio 2.20). RSI at 66.7 indicates strong buying interest with room to run. A successful breakout above 13.10 offers an attractive entry point.",2026-08-11T03:51:54
+IDEA,SELL,13.48,3.22,EMA20 crossed below EMA50,2026-08-12T04:32:59
+LENSKART,614.55,100.0,BUY,"score 100.0, MACD bullish, price above SMA20, volume expansion",596.11,651.42,75.74,2.9186,2.1009,6.21,54,5000.0,995.57,0.0,"**Trend:** Strongly bullish. The stock is trading well above its 20, 50, and 200 EMAs, which are in a perfect golden alignment. 
+
+**Why This Setup is Attractive:** A flawless technical score of 100.0 is backed by a massive volume surge (6.21x average) and strong momentum (RSI 75.7, bullish MACD crossover). The upcoming Q1 earnings announcement serves as a high-impact catalyst.
+
+**Risk:** Elevated volatility due to the imminent earnings release and potential short-term profit-booking/exhaustion as RSI enters overbought territory. 
+
+**Holding Period:** 1 to 3 weeks (Swing trade).",2026-08-13T03:51:03
+ADANIPOWER,SELL,204.84,-3.16,Stop loss hit,2026-08-13T04:32:58
+VEDL,SELL,270.4,-3.43,Stop loss hit,2026-08-13T07:03:09
+JUBLFOOD,492.1,74.0,BUY,"score 74.0, MACD bullish, price above SMA20, volume expansion",477.34,521.63,65.82,-0.3941,-2.2394,1.43,67,5000.0,989.12,0.0,"**Trend:** Bullish. JUBLFOOD is trading above its EMA20, 50, and 200, confirming an active uptrend across multiple timeframes. 
+
+**Why Attractive:** The stock exhibits strong buying interest with an above-average volume ratio of 1.43 and an RSI of 65.8, indicating strong momentum. The price has successfully broken out above the EMA20/50 confluence zone (~₹481), and a technical score of 74.0 supports further upward continuation. 
+
+**Risk:** Immediate support lies at the EMA20/50 zone. A daily close below ₹480 would invalidate the bullish setup and serve as a logical stop-loss.
+
+**Holding Period:** 2 to 3 weeks for a swing play.",2026-08-13T09:02:19
+JUBLFOOD,SELL,517.9,5.24,RSI overheated,2026-08-14T04:03:03
+LTF,319.9,100.0,BUY,"score 100.0, MACD bullish, price above SMA20, volume expansion",310.3,339.09,57.7,3.3345,2.5108,1.46,104,5000.0,998.09,0.0,"**Trend:** Strongly bullish. LTF is trading above its 20, 50, and 200 EMAs, confirming a well-aligned, multi-timeframe uptrend.
+
+**Why Attractive:** Sporting a perfect technical score of 100, the stock shows strong momentum. The positive MACD crossover, an RSI of 57.7 (suggesting ample headroom), and above-average volume (1.46x) validate this bullish breakout setup. 
+
+**Risk:** A breakdown below immediate support at the 20-day EMA (317.67) or 50-day EMA (314.60). A protective stop-loss can be placed just below the 200-day EMA (313.11).
+
+**Holding Period:** 2 to 3 weeks (Swing trade).",2026-08-19T03:51:33
+IDEA,14.14,98.0,BUY,"score 98.0, MACD bullish, price above SMA20",13.72,14.99,70.48,0.0907,0.0581,1.07,2357,5000.0,999.84,0.0,"**Trend:** Short-term bullish. IDEA (13.06) trades above its 20 and 50 EMAs, currently testing the crucial 200 EMA (13.10) resistance. 
+
+**Risk:** High volatility. A failure to cross the 200 EMA could trigger a pullback to the 12.85 support level. 
+
+**Holding Period:** 1 to 3 weeks (Swing).
+
+**Why this Setup is Attractive:** 
+IDEA displays a strong Technical Score of 87.0. The setup is backed by a bullish MACD crossover, robust short-term momentum, and a significant volume surge (Volume Ratio 2.20). RSI at 66.7 indicates strong buying interest with room to run. A successful breakout above 13.10 offers an attractive entry point.",2026-08-19T03:52:13
+LENSKART,SELL,636.9,3.64,RSI overheated,2026-08-19T05:33:12
+NATIONALUM,391.65,100.0,BUY,"score 100.0, MACD bullish, price above SMA20, volume expansion",379.9,415.15,59.01,-0.1641,-0.8142,1.78,85,5000.0,998.71,0.0,"**1. Trend:** Strong uptrend. NATIONALUM is trading comfortably above its 20, 50, and 200 EMAs, confirming a dominant bullish structure.
+
+**2. Why this setup is attractive:** The stock has a perfect Technical Score of 100. High volume (ratio 1.78) indicates institutional interest, while an RSI of 59.0 suggests strong momentum with room to run. The MACD is also showing a positive convergence.
+
+**3. Risk:** A reversal below the key support cluster near EMA200 (₹380). Place a strict stop-loss below ₹380 to manage downside risk. 
+
+**4. Holding Period:** 1 to 3 weeks (5–15 trading sessions) to capture the swing momentum.",2026-08-20T03:51:09
+ONGC,SELL,233.97,-3.48,Stop loss hit,2026-08-20T04:02:58
+CONCOR,521.75,100.0,BUY,"score 100.0, MACD bullish, price above SMA20",506.1,553.05,58.36,-0.3436,-0.6736,1.02,63,5000.0,986.11,0.0,"**CONCOR Swing Analysis**
+
+* **Trend:** Bullish. The stock (521.75) has successfully crossed and closed above a tight cluster of its 20, 50, and 200-day EMAs, indicating a strong trend reversal.
+* **Why Setup is Attractive:** It boasts a perfect Technical Score of 100. The breakout from the EMA cluster is backed by a bullish MACD crossover and an RSI of 58.4, which suggests accelerating momentum with plenty of headroom.
+* **Risk:** A close below the EMA200 (515.81) invalidates this bullish setup. A tight stop-loss should be placed just below this key support.
+* **Holding Period:** 1 to 3 weeks (5 to 15 trading sessions).",2026-08-24T03:50:25
+IDEA,SELL,14.69,3.89,RSI overheated,2026-08-25T04:33:00
+NTPC,341.6,100.0,BUY,"score 100.0, MACD bullish, price above SMA20, volume expansion",331.35,362.1,60.94,0.1075,-0.2906,1.55,97,5000.0,994.06,0.0,"**Trend:** Strongly bullish. NTPC is trading above its convergent EMA20, EMA50 (338.45), and EMA200 (340.11) levels, indicating strong structural strength.
+
+**Why This Setup is Attractive:** The stock boasts a perfect technical score (100) supported by a bullish MACD crossover and above-average volume (Volume Ratio: 1.55). RSI at 60.9 indicates strong momentum with room for further upside.
+
+**Risk:** A decisive close below the key support cluster near the 338–340 zone (EMAs). 
+
+**Holding Period:** 2 to 3 weeks (Swing).",2026-08-26T03:51:21
+NTPC,SELL,329.6,-3.51,Stop loss hit,2026-08-27T05:04:11
+FORTIS,931.4,70.0,BUY,"score 70.0, MACD bullish, price above SMA20",903.46,987.28,75.11,0.5657,-0.248,1.08,35,5000.0,977.97,0.0,"**Trend:** Strong bullish. FORTIS has broken above its 20, 50, and 200 EMAs, confirming a structural uptrend.
+
+**Why Attractive:** The price successfully cleared a tight EMA cluster (916–919) with rising volume. This technical breakout is supported by a bullish MACD crossover and positive fundamental tailwinds from the Delhi Master Plan 2047 news.
+
+**Risk:** With the RSI at 75.1, the stock is in overbought territory, increasing the risk of short-term profit-booking or a minor pullback. A breakdown below the 200 EMA (919.60) would negate the bullish thesis.
+
+**Holding Period:** 2 to 3 weeks (Swing Trade).
+
+*Disclaimer: Swing trading involves market risk; no profits are guaranteed.*",2026-08-28T03:50:38
+OIL,SELL,482.4,1.5,MACD bearish crossover,2026-08-28T08:33:03
+LTF,SELL,307.15,-3.99,Stop loss hit,2026-08-31T04:32:56
+NATIONALUM,SELL,379.45,-3.12,Stop loss hit,2026-08-31T07:03:10
+LENSKART,668.85,100.0,BUY,"score 100.0, MACD bullish, price above SMA20, volume expansion",648.78,708.98,79.39,3.8148,2.2058,7.12,49,5000.0,983.21,0.0,"**Trend:** Strongly bullish. The stock is trading well above its 20, 50, and 200 EMAs, which are in a perfect golden alignment. 
+
+**Why This Setup is Attractive:** A flawless technical score of 100.0 is backed by a massive volume surge (6.21x average) and strong momentum (RSI 75.7, bullish MACD crossover). The upcoming Q1 earnings announcement serves as a high-impact catalyst.
+
+**Risk:** Elevated volatility due to the imminent earnings release and potential short-term profit-booking/exhaustion as RSI enters overbought territory. 
+
+**Holding Period:** 1 to 3 weeks (Swing trade).",2026-08-31T09:32:25
+TMCV,470.75,100.0,BUY,"score 100.0, MACD bullish, price above SMA20, volume expansion",456.63,499.0,60.27,-0.0054,-0.5946,1.51,70,5000.0,988.57,0.0,"**Trend:** Strongly bullish. TMCV is trading well above its 20, 50, and 200-day EMAs, exhibiting robust upward alignment.
+
+**Why This Setup is Attractive:** The stock boasts a perfect technical score of 100, driven by a massive volume breakout (3.58x average). A bullish MACD crossover and strong positive momentum support further upside potential. 
+
+**Risk:** With an RSI of 78.7, the stock is in overbought territory, increasing the risk of a brief pullback or consolidation. A defensive stop-loss should be placed near the 20-day EMA (455).
+
+**Holding Period:** 1 to 3 weeks (5–15 trading sessions) to ride the immediate momentum.",2026-08-31T09:33:04
+SBICARD,666.8,96.0,BUY,"score 96.0, MACD bullish, price above SMA20, volume expansion",646.8,706.81,74.72,3.2959,0.8091,2.08,49,5000.0,980.2,0.0,"**Trend:** Strong bullish. SBICARD is trading above its 20, 50, and 200-day EMAs, confirming a robust short-to-medium-term uptrend. 
+
+**Why Attractive:** A high Technical Score of 96.0, backed by a bullish MACD crossover and a Volume Ratio of 2.08, indicates strong institutional buying and breakout momentum. 
+
+**Risk:** With the RSI at 74.7, the stock is in overbought territory. There is a risk of short-term profit booking or a minor pullback towards the EMA20 support level (651.00). Keep a strict stop-loss below 645.
+
+**Holding Period:** 2 to 4 weeks (Swing target).",2026-08-31T09:32:53

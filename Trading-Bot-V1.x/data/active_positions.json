@@ -1,0 +1,57 @@
+[
+  {
+    "symbol": "CONCOR",
+    "entry_price": 521.75,
+    "quantity": 63,
+    "stop_loss": 506.1,
+    "target": 553.05,
+    "highest_price": 522.2000122070312,
+    "opened_at": "2026-08-24T03:51:45",
+    "reason": "score 100.0, MACD bullish, price above SMA20",
+    "created_at": "2026-08-24T03:51:45"
+  },
+  {
+    "symbol": "FORTIS",
+    "entry_price": 931.4,
+    "quantity": 35,
+    "stop_loss": 903.46,
+    "target": 987.28,
+    "highest_price": 938.4500122070312,
+    "opened_at": "2026-08-28T03:51:46",
+    "reason": "score 70.0, MACD bullish, price above SMA20",
+    "created_at": "2026-08-28T03:51:46"
+  },
+  {
+    "symbol": "LENSKART",
+    "entry_price": 668.85,
+    "quantity": 49,
+    "stop_loss": 648.78,
+    "target": 708.98,
+    "highest_price": 668.85,
+    "opened_at": "2026-08-31T09:33:17",
+    "reason": "score 100.0, MACD bullish, price above SMA20, volume expansion",
+    "created_at": "2026-08-31T09:33:17"
+  },
+  {
+    "symbol": "TMCV",
+    "entry_price": 470.75,
+    "quantity": 70,
+    "stop_loss": 456.63,
+    "target": 499.0,
+    "highest_price": 470.8500061035156,
+    "opened_at": "2026-08-31T09:33:17",
+    "reason": "score 100.0, MACD bullish, price above SMA20, volume expansion",
+    "created_at": "2026-08-31T09:33:17"
+  },
+  {
+    "symbol": "SBICARD",
+    "entry_price": 666.8,
+    "quantity": 49,
+    "stop_loss": 646.8,
+    "target": 706.81,
+    "highest_price": 666.8,
+    "opened_at": "2026-08-31T09:33:17",
+    "reason": "score 96.0, MACD bullish, price above SMA20, volume expansion",
+    "created_at": "2026-08-31T09:33:17"
+  }
+]

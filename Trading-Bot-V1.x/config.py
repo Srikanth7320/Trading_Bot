@@ -122,3 +122,4 @@ def validate_required_settings(active_settings: Settings) -> None:
     if missing:
         joined = ", ".join(missing)
         raise RuntimeError(f"Mandatory configuration missing: {joined}")
+
