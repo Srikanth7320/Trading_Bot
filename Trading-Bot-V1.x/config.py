@@ -69,15 +69,17 @@ class Settings:
     history_interval: str = os.getenv("HISTORY_INTERVAL", "30m")
     default_quantity: int = _env_int("DEFAULT_QUANTITY", 1)
 
-    stop_loss_pct: float = _env_float("STOP_LOSS_PCT", 3.0)
+    stop_loss_pct: float = _env_float("STOP_LOSS_PCT", 2.0)
     target_pct: float = _env_float("TARGET_PCT", 6.0)
-    trailing_stop_pct: float = _env_float("TRAILING_STOP_PCT", 4.0)
+    trailing_stop_pct: float = _env_float("TRAILING_STOP_PCT", 1.0)
+    trailing_min_pnl_pct: float = _env_float("TRAILING_MIN_PNL_PCT", 0.5)
+    trailing_atr_multiplier: float = _env_float("TRAILING_ATR_MULTIPLIER", 1.0)
     max_active_positions: int = _env_int("MAX_ACTIVE_POSITIONS", 5)
     enable_ai: bool = _env_bool("ENABLE_AI", True)
     enable_news: bool = _env_bool("ENABLE_NEWS", True)
 
     portfolio_size: float = _env_float("PORTFOLIO_SIZE", 100000.0)
-    risk_per_trade_pct: float = _env_float("RISK_PER_TRADE_PCT", 1.0)
+    risk_per_trade_pct: float = _env_float("RISK_PER_TRADE_PCT", 0.5)
     max_position_value_pct: float = _env_float("MAX_POSITION_VALUE_PCT", 5.0)
     paper_trading: bool = _env_bool("PAPER_TRADING", True)
 
@@ -88,14 +90,21 @@ class Settings:
     daily_scan_time: str = _env_time("DAILY_SCAN_TIME", "09:20")
 
     # Trading Filters
-    minimum_buy_score: float = _env_float("MINIMUM_BUY_SCORE", 65.0)
-    minimum_volume_ratio: float = _env_float("MINIMUM_VOLUME_RATIO", 1.0)
+    minimum_buy_score: float = _env_float("MINIMUM_BUY_SCORE", 60.0)
+    minimum_volume_ratio: float = _env_float("MINIMUM_VOLUME_RATIO", 1.2)
+    # Entry controls
+    rsi_entry_max: float = _env_float("RSI_ENTRY_MAX", 70.0)
+    max_new_entries_per_scan: int = _env_int("MAX_NEW_ENTRIES_PER_SCAN", 1)
 
     # Holding
     max_holding_days: int = _env_int("MAX_HOLDING_DAYS", 30)
 
     # Cooldown
     cooldown_days: int = _env_int("COOLDOWN_DAYS", 5)
+
+    # Trade execution modeling for backtests
+    slippage_pct: float = _env_float("SLIPPAGE_PCT", 0.05)
+    commission_pct: float = _env_float("COMMISSION_PCT", 0.02)
 
     # Don't buy same stock twice in one day
     prevent_same_day_buy: bool = _env_bool("PREVENT_SAME_DAY_BUY", True)

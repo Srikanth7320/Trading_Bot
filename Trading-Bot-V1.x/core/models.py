@@ -52,6 +52,8 @@ class Position:
 
     @classmethod
     def from_dict(cls, payload: dict[str, Any]) -> "Position":
+        opened_at = payload.get("opened_at") or payload.get("created_at") or datetime.now().isoformat(timespec="seconds")
+        created_at = payload.get("created_at") or opened_at
         return cls(
             symbol=payload["symbol"],
             entry_price=float(payload["entry_price"]),
@@ -59,9 +61,9 @@ class Position:
             stop_loss=float(payload["stop_loss"]),
             target=float(payload["target"]),
             highest_price=float(payload.get("highest_price", payload["entry_price"])),
-            opened_at=payload.get("opened_at", datetime.now().isoformat(timespec="seconds")),
+            opened_at=opened_at,
             reason=payload.get("reason", ""),
-            created_at=payload.get("created_at", payload.get("opened_at", datetime.now().isoformat(timespec="seconds"))),
+            created_at=created_at,
         )
 
 

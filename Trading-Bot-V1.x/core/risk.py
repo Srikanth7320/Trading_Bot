@@ -13,7 +13,11 @@ class RiskEngine:
     def build_recommendation(self, symbol: str, latest, score: float, reason: str, news_score: float, ai_note: str) -> Recommendation:
         price = float(latest["Close"])
         atr = float(latest.get("ATR14") or 0)
-        stop_distance = max(price * (self.settings.stop_loss_pct / 100), atr * 1.2 if atr > 0 else price * (self.settings.stop_loss_pct / 100))
+        configured_stop_pct = max(1.0, float(self.settings.stop_loss_pct))
+        stop_distance = max(
+            price * (configured_stop_pct / 100),
+            atr * 1.2 if atr > 0 else 0.0,
+        )
         target_distance = max(price * (self.settings.target_pct / 100), stop_distance * 1.5)
         risk_amount = self.settings.portfolio_size * (self.settings.risk_per_trade_pct / 100)
         max_notional = self.settings.portfolio_size * (self.settings.max_position_value_pct / 100)

@@ -100,6 +100,10 @@ class Scanner:
 
         recommendations.sort(key=lambda item: item.score, reverse=True)
         selected = self._select_recommendations(recommendations)
+        # Enforce per-scan cap on new entries
+        max_new = getattr(self.settings, "max_new_entries_per_scan", 2)
+        if max_new and len(selected) > max_new:
+            selected = selected[:max_new]
         scan_metric = {
             "created_at": self._now_iso(),
             "symbols_scanned": len(self.settings.symbols),
@@ -159,7 +163,8 @@ class Scanner:
             return "score"
 
         rsi = float(latest.get("RSI", 0))
-        if not 40 <= rsi <= 80:
+        rsi_max = getattr(settings, "rsi_entry_max", 70.0)
+        if rsi > rsi_max or rsi < 45:
             return "RSI"
 
         macd = float(latest.get("MACD", 0))
@@ -168,21 +173,31 @@ class Scanner:
             return "MACD crossover"
 
         close = float(latest.get("Close", 0))
-        if close <= float(latest.get("EMA20", 0)):
-            return "price/EMA20"
-
+        sma20 = float(latest.get("SMA20", 0))
+        sma50 = float(latest.get("SMA50", 0))
         ema20 = float(latest.get("EMA20", 0))
         ema50 = float(latest.get("EMA50", 0))
         ema200 = float(latest.get("EMA200", 0))
-        if not (ema20 > ema50 or ema50 > ema200):
-            return "EMA trend"
+        if close <= ema20:
+            return "price/EMA20"
+        if close <= sma20 * 1.02:
+            return "weak breakout"
+        if not (sma20 > sma50 and ema20 > ema50 > ema200):
+            return "trend structure"
+        if not (close > sma20 and sma20 > sma50):
+            return "trend structure"
 
-        minimum_volume_ratio = getattr(settings, "minimum_volume_ratio", 1.1)
-        if float(latest.get("VOLUME_RATIO", 0)) < minimum_volume_ratio:
+        minimum_volume_ratio = max(getattr(settings, "minimum_volume_ratio", 1.1), 1.5)
+        volume_ratio = float(latest.get("VOLUME_RATIO", 0))
+        if volume_ratio < minimum_volume_ratio:
             return "volume"
 
-        if float(latest.get("MOMENTUM20", 0)) <= 0:
+        momentum20 = float(latest.get("MOMENTUM20", 0))
+        if momentum20 <= 8.0:
             return "momentum"
+
+        if not bool(latest.get("GOLDEN_CROSS", False)):
+            return "trend structure"
 
         return None
 

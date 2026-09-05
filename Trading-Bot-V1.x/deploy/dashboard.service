@@ -1,0 +1,15 @@
+[Unit]
+Description=NSE Trading Dashboard
+After=network.target
+
+[Service]
+Type=simple
+User=__APP_USER__
+WorkingDirectory=__APP_DIR__
+Environment=PYTHONPATH=__APP_DIR__
+ExecStart=/bin/bash -lc 'source __APP_DIR__/.venv/bin/activate && cd __APP_DIR__ && python dashboard_server.py --port 8000'
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

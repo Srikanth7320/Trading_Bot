@@ -32,6 +32,8 @@
     }
     .app { display: flex; min-height: 100vh; }
     .sidebar { width: 240px; background: var(--panel); padding: 20px; border-right: 1px solid var(--border); }
+    .sidebar .menu-btn { width: 100%; }
+    .menu-btn-mobile { display: none; padding: 10px 12px; font-size: 20px; border-radius: 8px; border: 1px solid var(--border); background: var(--button-bg); color: var(--text); }
     .sidebar h2 { margin-top: 0; font-size: 1.2rem; }
     .menu-btn { display: block; width: 100%; text-align: left; margin-bottom: 8px; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--panel-2); color: var(--text); cursor: pointer; }
     .menu-btn.active { background: var(--accent); border-color: #60a5fa; }
@@ -47,9 +49,35 @@
     .negative { color: #f87171; }
     .muted { color: var(--muted); }
     input, button { padding: 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--button-bg); color: var(--text); }
-    #chart { width: 100%; height: 260px; background: var(--chart-bg); border-radius: 8px; border: 1px solid var(--border); padding: 12px; overflow: hidden; }
+    :root { --chart-height: 260px; }
+    #chart { width: 100%; height: var(--chart-height); background: var(--chart-bg); border-radius: 8px; border: 1px solid var(--border); padding: 12px; overflow: hidden; }
+    #chart svg { width: 100%; height: 100%; display: block; }
     .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
     .stat-card { background: var(--panel-2); padding: 12px; border-radius: 8px; }
+
+    /* Responsive: mobile-first adjustments */
+    @media (max-width: 900px) {
+      .app { flex-direction: column; }
+      .sidebar { width: 100%; border-right: none; border-bottom: 1px solid var(--border); padding: 12px; display: flex; gap: 8px; align-items: center; }
+      .sidebar h2 { display: none; }
+      .menu-btn { padding: 10px; font-size: 15px; }
+      .topbar { gap: 8px; }
+      .menu-btn-mobile { display: inline-block; }
+      .content { padding: 12px; }
+      :root { --chart-height: 200px; }
+      input, button, select { font-size: 16px; }
+    }
+
+    /* Small screens: make sidebar collapsible overlay */
+    @media (max-width: 600px) {
+      .app { position: relative; }
+      .sidebar { position: fixed; left: 0; top: 0; bottom: 0; width: 260px; transform: translateX(-110%); transition: transform 220ms ease; z-index: 60; padding-top: 60px; }
+      .sidebar.open { transform: translateX(0); box-shadow: 0 6px 24px rgba(2,6,23,0.6); }
+      .content { margin-left: 0; }
+      .panel { margin-top: 12px; }
+      :root { --chart-height: 180px; }
+      .menu-btn-mobile { display: inline-block; }
+    }
   </style>
 </head>
 <body>
@@ -61,15 +89,23 @@
       <button class="menu-btn" data-target="signals">Recent Signals</button>
       <button class="menu-btn" data-target="stock">Stock Viewer</button>
       <button class="menu-btn" data-target="backtest">Backtest</button>
+      <div id="telemetryPanel" style="margin-top:12px;">
+        <h4 style="margin:6px 0 8px 0; font-size:0.95rem;">Telemetry</h4>
+        <div id="scanSummary" class="muted" style="font-size:0.9rem;">Loading scan metrics...</div>
+        <div id="dailySummary" class="muted" style="font-size:0.9rem; margin-top:8px;">Loading daily summary...</div>
+      </div>
     </aside>
 
     <main class="content">
       <div class="topbar">
-        <h3 style="margin:0;">NSE Live Dashboard</h3>
-        <div class="topbar-actions">
-          <button id="themeToggle">🌙 Dark</button>
-          <button id="refreshBtn">Refresh</button>
-        </div>
+          <h3 style="margin:0;">NSE Live Dashboard</h3>
+          <div>
+            <button id="mobileMenuBtn" class="menu-btn-mobile" aria-label="Menu">☰</button>
+          </div>
+          <div class="topbar-actions">
+            <button id="themeToggle">🌙 Dark</button>
+            <button id="refreshBtn">Refresh</button>
+          </div>
       </div>
       <div id="status" class="muted" style="margin-bottom: 12px;">Loading data...</div>
 
@@ -123,6 +159,9 @@
         panels.forEach(panel => panel.classList.remove('active'));
         button.classList.add('active');
         document.getElementById(button.dataset.target).classList.add('active');
+        // Close mobile sidebar after selecting
+        const sidebar = document.querySelector('.sidebar');
+        if (sidebar && sidebar.classList.contains('open')) sidebar.classList.remove('open');
       });
     });
 
@@ -147,6 +186,8 @@
         renderOverview(positions, history);
         renderPositions(positions);
         renderSignals(history);
+        // telemetry
+        loadTelemetry();
         const now = new Date().toLocaleTimeString();
         statusEl.textContent = `Last updated: ${now} • ${positions.length} active positions`;
       } catch (error) {
@@ -155,6 +196,27 @@
       } finally {
         refreshBtn.disabled = false;
         refreshBtn.textContent = 'Refresh';
+      }
+    }
+
+    async function loadTelemetry() {
+      try {
+        const scan = await fetch('/api/scan-summary').then(r => r.json()).catch(() => null);
+        const daily = await fetch('/api/daily-summary').then(r => r.json()).catch(() => null);
+        const scanEl = document.getElementById('scanSummary');
+        const dailyEl = document.getElementById('dailySummary');
+        if (scan && scanEl) {
+          scanEl.innerHTML = `Scans: <b>${scan.scan_count}</b> • Avg buys: <b>${scan.average_buy_recommendations}</b> • Avg qualified: <b>${scan.average_qualified_signals}</b>`;
+        } else if (scanEl) {
+          scanEl.textContent = 'No scan metrics available.';
+        }
+        if (daily && dailyEl) {
+          dailyEl.innerHTML = `Active: <b>${daily.active_positions}</b> • Buys: <b>${daily.buy_signals}</b> • Sells: <b>${daily.sell_signals}</b>`;
+        } else if (dailyEl) {
+          dailyEl.textContent = 'No daily summary available.';
+        }
+      } catch (err) {
+        // silent
       }
     }
 
@@ -255,6 +317,15 @@
       }
     }
 
+    // Mobile menu toggle
+    const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+    if (mobileMenuBtn) {
+      mobileMenuBtn.addEventListener('click', () => {
+        const sidebar = document.querySelector('.sidebar');
+        if (sidebar) sidebar.classList.toggle('open');
+      });
+    }
+
     themeToggle.addEventListener('click', toggleTheme);
     refreshBtn.addEventListener('click', () => loadDashboardData());
 
@@ -265,6 +336,8 @@
     loadSymbolOptions();
     loadSymbolData();
     setInterval(() => loadDashboardData(), 15 * 60 * 1000);
+    // refresh telemetry more frequently
+    setInterval(() => loadTelemetry(), 5 * 60 * 1000);
   </script>
 </body>
 </html>

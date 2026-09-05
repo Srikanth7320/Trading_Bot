@@ -36,6 +36,32 @@ class SimpleBacktester:
         self.risk = risk
         self.storage = Storage(settings.data_dir)
 
+    def validate_market_readiness(self, symbols: List[str] | None = None) -> dict:
+        result = self.run(symbols)
+        trades = int(result.get("trades", 0))
+        win_rate = float(result.get("win_rate", 0.0))
+        avg_pnl = float(result.get("avg_pnl", 0.0))
+        total_pnl = float(result.get("total_pnl", 0.0))
+
+        pass_gate = (
+            trades >= 5
+            and win_rate >= 50.0
+            and avg_pnl > 0.0
+            and total_pnl > 0.0
+        )
+
+        if pass_gate:
+            return {"pass": True, "reason": "strategy passes market-readiness gate", "metrics": result}
+
+        return {
+            "pass": False,
+            "reason": "strategy not ready for live-market validation: needs at least 5 trades, >50% win rate, positive avg PnL and positive total PnL",
+            "metrics": result,
+        }
+
+    def validate_paper_run(self, symbols: List[str] | None = None) -> dict:
+        return self.validate_market_readiness(symbols)
+
     def run(self, symbols: List[str] | None = None) -> dict:
         if symbols is None:
             symbols = self.settings.symbols
@@ -75,7 +101,12 @@ class SimpleBacktester:
                     for future_idx in range(idx + 1, min(len(enriched), idx + self.settings.max_holding_days + 1)):
                         future = enriched.iloc[future_idx]
                         current_price = float(future["Close"])
-                        pnl_pct = ((current_price - entry_price) / entry_price) * 100
+                        # Apply slippage and commission modeling
+                        slippage = self.settings.slippage_pct / 100.0
+                        commission = self.settings.commission_pct / 100.0
+                        effective_entry = entry_price * (1 + slippage + commission)
+                        effective_exit = current_price * (1 - slippage - commission)
+                        pnl_pct = ((effective_exit - effective_entry) / effective_entry) * 100
                         macd = float(future.get("MACD", 0))
                         signal = float(future.get("MACD_SIGNAL", 0))
                         ema20 = float(future.get("EMA20", current_price))
@@ -108,6 +139,13 @@ class SimpleBacktester:
                         exit_date = str(enriched.index[last_idx])
                         reason = "max hold"
 
+                    # Compute final pnl including slippage/commission for reporting
+                    slippage = self.settings.slippage_pct / 100.0
+                    commission = self.settings.commission_pct / 100.0
+                    effective_entry = entry_price * (1 + slippage + commission)
+                    effective_exit = float(exit_price) * (1 - slippage - commission)
+                    final_pnl_pct = ((effective_exit - effective_entry) / effective_entry) * 100
+
                     trades.append(
                         BacktestTrade(
                             symbol=symbol,
@@ -115,7 +153,7 @@ class SimpleBacktester:
                             entry_price=entry_price,
                             exit_date=exit_date,
                             exit_price=float(exit_price),
-                            pnl_pct=((float(exit_price) - entry_price) / entry_price) * 100,
+                            pnl_pct=final_pnl_pct,
                             reason=reason,
                         )
                     )
@@ -146,7 +184,8 @@ class SimpleBacktester:
             return False
 
         rsi = float(latest.get("RSI", 0))
-        if not 40 <= rsi <= 80:
+        rsi_max = getattr(self.settings, "rsi_entry_max", 70.0)
+        if not 45 <= rsi <= rsi_max:
             return False
 
         macd = float(latest.get("MACD", 0))
@@ -156,17 +195,27 @@ class SimpleBacktester:
 
         if price <= float(latest.get("EMA20", 0)):
             return False
+        if price <= float(latest.get("SMA20", price)) * 1.02:
+            return False
 
+        sma20 = float(latest.get("SMA20", 0))
+        sma50 = float(latest.get("SMA50", 0))
         ema20 = float(latest.get("EMA20", 0))
         ema50 = float(latest.get("EMA50", 0))
         ema200 = float(latest.get("EMA200", 0))
-        if not (ema20 > ema50 or ema50 > ema200):
+        if not (sma20 > sma50 and ema20 > ema50 > ema200):
+            return False
+        if not (price > sma20 and sma20 > sma50):
             return False
 
-        if float(latest.get("VOLUME_RATIO", 0)) < self.settings.minimum_volume_ratio:
+        volume_ratio = float(latest.get("VOLUME_RATIO", 0))
+        if volume_ratio < max(self.settings.minimum_volume_ratio, 1.5):
             return False
 
-        if float(latest.get("MOMENTUM20", 0)) <= 0:
+        if float(latest.get("MOMENTUM20", 0)) <= 8.0:
+            return False
+
+        if not bool(latest.get("GOLDEN_CROSS", False)):
             return False
 
         return True
