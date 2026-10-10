@@ -74,8 +74,11 @@ class Scanner:
                     continue
 
                 daily_latest = None
+                daily_history = None
                 if self.settings.history_interval != "1d":
-                    daily_history = self.market.get_history(symbol, period="6mo", interval="1d")
+                    # One year of daily prices supplies both the longer-term
+                    # trend context and the requested 52-week range.
+                    daily_history = self.market.get_history(symbol, period="1y", interval="1d")
                     if not daily_history.empty and len(daily_history) >= 80:
                         daily_enriched = add_indicators(daily_history).dropna()
                         if not daily_enriched.empty:
@@ -91,8 +94,14 @@ class Scanner:
                     rejected_by_gate[rejection] = rejected_by_gate.get(rejection, 0) + 1
                     continue
 
+                performance_52w = self._performance_52_week(daily_history)
+                fundamental_rejection = self._fundamental_gate_failure(symbol, performance_52w)
+                if fundamental_rejection:
+                    rejected_by_gate[fundamental_rejection] = rejected_by_gate.get(fundamental_rejection, 0) + 1
+                    continue
+
                 ai_note = self.ai.summarize(symbol, latest, news_items, final_score)
-                reason = self._reason(latest, final_score, news_score)
+                reason = self._reason(latest, final_score, news_score, performance_52w)
                 recommendation = self.risk.build_recommendation(symbol, latest, final_score, reason, news_score, ai_note)
                 recommendations.append(recommendation)
             except Exception as exc:
@@ -174,38 +183,64 @@ class Scanner:
 
         close = float(latest.get("Close", 0))
         sma20 = float(latest.get("SMA20", 0))
-        sma50 = float(latest.get("SMA50", 0))
         ema20 = float(latest.get("EMA20", 0))
         ema50 = float(latest.get("EMA50", 0))
-        ema200 = float(latest.get("EMA200", 0))
         if close <= ema20:
             return "price/EMA20"
-        if close <= sma20 * 1.02:
-            return "weak breakout"
-        if not (sma20 > sma50 and ema20 > ema50 > ema200):
+        # Require an established bullish trend, but do not require a fresh
+        # golden cross or an unusually large one-bar breakout.  Those two
+        # conditions made valid swing setups exceptionally rare.
+        if not (sma20 > sma50 or ema20 > ema50):
             return "trend structure"
-        if not (close > sma20 and sma20 > sma50):
+        if close <= sma20:
             return "trend structure"
 
-        minimum_volume_ratio = max(getattr(settings, "minimum_volume_ratio", 1.1), 1.5)
+        minimum_volume_ratio = getattr(settings, "minimum_volume_ratio", 1.1)
         volume_ratio = float(latest.get("VOLUME_RATIO", 0))
         if volume_ratio < minimum_volume_ratio:
             return "volume"
 
         momentum20 = float(latest.get("MOMENTUM20", 0))
-        if momentum20 <= 8.0:
+        if momentum20 <= 0:
             return "momentum"
 
-        if not bool(latest.get("GOLDEN_CROSS", False)):
-            return "trend structure"
-
         return None
+
+    def _fundamental_gate_failure(self, symbol: str, performance_52w: float | None) -> str | None:
+        minimum_performance = getattr(self.settings, "minimum_52_week_performance", 70.0)
+        if performance_52w is None:
+            return "52-week range unavailable"
+        if performance_52w <= minimum_performance:
+            return "52-week performance"
+
+        if getattr(self.settings, "require_positive_quarterly_profit", True):
+            quarterly_profit = self.market.get_latest_quarterly_profit(symbol)
+            if quarterly_profit is None:
+                return "quarterly profit unavailable"
+            if quarterly_profit <= 0:
+                return "quarterly loss"
+        return None
+
+    @staticmethod
+    def _performance_52_week(history) -> float | None:
+        """Return the current location in the 52-week low-to-high range."""
+        if history is None or history.empty:
+            return None
+        required = {"Low", "High", "Close"}
+        if not required.issubset(history.columns):
+            return None
+        low = float(history["Low"].min())
+        high = float(history["High"].max())
+        close = float(history["Close"].iloc[-1])
+        if high <= low:
+            return None
+        return ((close - low) / (high - low)) * 100
 
     @staticmethod
     def _now_iso() -> str:
         return datetime.utcnow().isoformat(timespec="seconds") + "Z"
 
-    def _reason(self, latest, score: float, news_score: float) -> str:
+    def _reason(self, latest, score: float, news_score: float, performance_52w: float | None = None) -> str:
         parts = [f"score {score:.1f}"]
         if float(latest.get("MACD", 0)) > float(latest.get("MACD_SIGNAL", 0)):
             parts.append("MACD bullish")
@@ -215,4 +250,8 @@ class Scanner:
             parts.append("volume expansion")
         if news_score > 0:
             parts.append("positive news bias")
+        if performance_52w is not None:
+            parts.append(f"52-week position {performance_52w:.0f}%")
+        if getattr(self.settings, "require_positive_quarterly_profit", True):
+            parts.append("latest quarterly profit positive")
         return ", ".join(parts)

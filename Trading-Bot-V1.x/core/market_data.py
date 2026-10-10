@@ -14,6 +14,11 @@ logger = logging.getLogger(__name__)
 
 
 class MarketDataClient:
+    def __init__(self) -> None:
+        # Fundamental data is unchanged during a scan.  Caching it avoids
+        # repeatedly requesting the same quarterly statement.
+        self._quarterly_profit_cache: dict[str, float | None] = {}
+
     def get_history(self, symbol: str, period: str = "60d", interval: str = "1h") -> pd.DataFrame:
         if yf is None:
             logger.warning("yfinance is not installed; skipping market data fetch for %s", symbol)
@@ -47,3 +52,33 @@ class MarketDataClient:
         if frame.empty:
             return None
         return float(frame["Close"].dropna().iloc[-1])
+
+    def get_latest_quarterly_profit(self, symbol: str) -> float | None:
+        """Return the latest reported quarterly net profit, if available."""
+        if symbol in self._quarterly_profit_cache:
+            return self._quarterly_profit_cache[symbol]
+
+        if yf is None:
+            return None
+
+        profit: float | None = None
+        ticker = nse_symbol(symbol)
+        try:
+            statement = yf.Ticker(ticker).quarterly_income_stmt
+            if statement is None or statement.empty:
+                statement = yf.Ticker(ticker).quarterly_financials
+
+            for row_name in ("Net Income", "Net Income Common Stockholders", "Normalized Income"):
+                if row_name not in statement.index:
+                    continue
+                values = statement.loc[row_name].dropna()
+                if not values.empty:
+                    profit = float(values.iloc[0])
+                    break
+        except Exception as exc:
+            logger.warning("Quarterly profit fetch failed for %s: %s", ticker, exc)
+
+        if profit is None:
+            logger.warning("No quarterly profit data returned for %s", ticker)
+        self._quarterly_profit_cache[symbol] = profit
+        return profit

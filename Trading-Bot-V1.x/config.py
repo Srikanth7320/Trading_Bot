@@ -92,6 +92,10 @@ class Settings:
     # Trading Filters
     minimum_buy_score: float = _env_float("MINIMUM_BUY_SCORE", 60.0)
     minimum_volume_ratio: float = _env_float("MINIMUM_VOLUME_RATIO", 1.2)
+    # The current price must sit in the upper part of its one-year range.
+    # 0 means the 52-week low and 100 means the 52-week high.
+    minimum_52_week_performance: float = _env_float("MINIMUM_52_WEEK_PERFORMANCE", 70.0)
+    require_positive_quarterly_profit: bool = _env_bool("REQUIRE_POSITIVE_QUARTERLY_PROFIT", True)
     # Entry controls
     rsi_entry_max: float = _env_float("RSI_ENTRY_MAX", 70.0)
     max_new_entries_per_scan: int = _env_int("MAX_NEW_ENTRIES_PER_SCAN", 1)
@@ -131,4 +135,3 @@ def validate_required_settings(active_settings: Settings) -> None:
     if missing:
         joined = ", ".join(missing)
         raise RuntimeError(f"Mandatory configuration missing: {joined}")
-

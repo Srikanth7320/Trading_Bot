@@ -1,0 +1,7 @@
+flask==3.0.2
+pandas==2.2.1
+requests==2.31.3
+yfinance==0.2.36
+google-genai==0.1.1
+python-dotenv==1.0.1
+schedule==1.2.1

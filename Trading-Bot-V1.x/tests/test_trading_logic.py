@@ -108,6 +108,51 @@ def test_entry_gate_rejects_weak_momentum_breakout():
     assert scanner._passes_entry_gate(latest, 75.0, 0.0) is False
 
 
+def test_52_week_performance_is_measured_from_low_to_high_range():
+    history = pd.DataFrame(
+        {
+            "Low": [100.0, 110.0, 120.0],
+            "High": [150.0, 180.0, 200.0],
+            "Close": [125.0, 150.0, 175.0],
+        }
+    )
+
+    assert Scanner._performance_52_week(history) == 75.0
+
+
+def test_fundamental_gate_requires_above_70_percent_range_and_profit():
+    class Market:
+        def get_latest_quarterly_profit(self, symbol):
+            return 10_000.0
+
+    class Settings:
+        minimum_52_week_performance = 70.0
+        require_positive_quarterly_profit = True
+
+    scanner = Scanner.__new__(Scanner)
+    scanner.settings = Settings()
+    scanner.market = Market()
+
+    assert scanner._fundamental_gate_failure("TEST", 70.0) == "52-week performance"
+    assert scanner._fundamental_gate_failure("TEST", 70.1) is None
+
+
+def test_fundamental_gate_rejects_quarterly_loss():
+    class Market:
+        def get_latest_quarterly_profit(self, symbol):
+            return -1.0
+
+    class Settings:
+        minimum_52_week_performance = 70.0
+        require_positive_quarterly_profit = True
+
+    scanner = Scanner.__new__(Scanner)
+    scanner.settings = Settings()
+    scanner.market = Market()
+
+    assert scanner._fundamental_gate_failure("TEST", 80.0) == "quarterly loss"
+
+
 def test_entry_gate_requires_stronger_breakout_confirmation():
     scanner = Scanner.__new__(Scanner)
     latest = {

@@ -69,6 +69,14 @@ async def scan_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
     positions = storage.load_positions()
     open_slots = max(0, context.application.bot_data["settings"].max_active_positions - len(positions))
+    if open_slots == 0:
+        await update.message.reply_text(
+            f"{len(recommendations)} qualifying BUY setup(s) found, but the portfolio is at its "
+            f"{len(positions)}-position limit. Run /monitor or close a position before opening another."
+        )
+        return
+
+    opened_positions = []
     for recommendation in recommendations[:open_slots]:
         if any(position.symbol == recommendation.symbol for position in positions):
             continue
@@ -76,11 +84,15 @@ async def scan_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             continue
         position = services["risk"].open_position(recommendation)
         positions.append(position)
+        opened_positions.append(recommendation)
         storage.append_signal(recommendation)
         storage.mark_buy_today(recommendation.symbol)
     storage.save_positions(positions)
 
-    await update.message.reply_html(format_recommendations(recommendations[:open_slots]))
+    if opened_positions:
+        await update.message.reply_html(format_recommendations(opened_positions))
+    else:
+        await update.message.reply_text("Qualifying setups were found, but none could be opened.")
 
 
 async def monitor_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -247,7 +259,8 @@ async def scheduled_scan(context: ContextTypes.DEFAULT_TYPE):
         await context.bot.send_message(
             settings.telegram_chat_id,
             "📅 Daily Scan Completed\n\n"
-            "No new buy signal was posted today.",
+            f"{len(recommendations)} qualifying BUY setup(s) found, but the portfolio is at its "
+            f"{len(positions)}-position limit. Run /monitor or close a position before opening another.",
             parse_mode="HTML",
         )
         return
