@@ -5,3 +5,4 @@ yfinance
 google-genai
 python-dotenv
 schedule
+pytz

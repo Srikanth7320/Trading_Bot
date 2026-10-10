@@ -1,9 +1,11 @@
 import os
 import threading
 import time
+from datetime import datetime
+import pytz
 import requests
 import pandas as pd
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, flash
 import schedule
 from dotenv import load_dotenv
 from bot_engine import (
@@ -20,12 +22,55 @@ from bot_engine import (
 load_dotenv()
 
 app = Flask(__name__)
+app.secret_key = os.getenv("FLASK_SECRET_KEY", "niftybot_secure_flash_key")
 
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 APPROVED_CHAT_ID = str(os.getenv("TELEGRAM_CHAT_ID"))
 
+# Official NSE Equities Trading Holidays for 2026 (Format: YYYY-MM-DD)
+NSE_HOLIDAYS_2026 = {
+    "2026-01-26",  # Republic Day
+    "2026-03-03",  # Holi
+    "2026-03-26",  # Shri Ram Navami
+    "2026-03-31",  # Shri Mahavir Jayanti
+    "2026-04-03",  # Good Friday
+    "2026-04-14",  # Dr. Baba Saheb Ambedkar Jayanti
+    "2026-05-01",  # Maharashtra Day
+    "2026-05-28",  # Bakri Id
+    "2026-06-26",  # Muharram
+    "2026-09-14",  # Ganesh Chaturthi
+    "2026-10-02",  # Mahatma Gandhi Jayanti
+    "2026-10-20",  # Dussehra
+    "2026-11-10",  # Diwali-Balipratipada
+    "2026-11-24",  # Prakash Gurpurb Sri Guru Nanak Dev
+    "2026-12-25",  # Christmas
+}
+
+def is_market_open():
+    """
+    Checks if the Indian stock market (NSE) is currently open.
+    Hours: Monday-Friday, 09:15 AM to 03:30 PM IST (excluding official NSE holidays).
+    """
+    ist = pytz.timezone('Asia/Kolkata')
+    now = datetime.now(ist)
+    
+    # 1. Weekend check (Saturday = 5, Sunday = 6)
+    if now.weekday() >= 5:
+        return False
+        
+    # 2. Holiday check
+    today_str = now.strftime("%Y-%m-%d")
+    if today_str in NSE_HOLIDAYS_2026:
+        return False
+
+    # 3. Time check (09:15 AM - 03:30 PM IST)
+    market_start = now.replace(hour=9, minute=15, second=0, microsecond=0)
+    market_end = now.replace(hour=15, minute=30, second=0, microsecond=0)
+    
+    return market_start <= now <= market_end
+
 def telegram_command_listener():
-    """Polls Telegram for commands like /summary and responds securely to approved Chat ID"""
+    """Polls Telegram for commands like /summary and /scan securely"""
     if not TELEGRAM_TOKEN or not APPROVED_CHAT_ID:
         return
     
@@ -42,9 +87,16 @@ def telegram_command_listener():
                     chat_id = str(message.get("chat", {}).get("id", ""))
                     text = message.get("text", "").strip().lower()
 
-                    # Security check: Restrict access to your approved Chat ID only
-                    if chat_id == APPROVED_CHAT_ID and text == "/summary":
-                        send_portfolio_summary(chat_id)
+                    if chat_id == APPROVED_CHAT_ID:
+                        if text == "/summary":
+                            send_portfolio_summary(chat_id)
+                        elif text == "/scan":
+                            if not is_market_open():
+                                send_telegram("⚠️ *Manual scan rejected:* Market is currently closed or on a holiday.")
+                            else:
+                                send_telegram("🔍 *Manual scan initiated via Telegram...* Please wait a moment.")
+                                run_market_scan()
+                                send_telegram("✅ *Manual scan complete!* Checked 50 stocks for entry/exit signals.")
         except Exception as e:
             print(f"Telegram Polling Error: {e}")
         time.sleep(2)
@@ -87,7 +139,8 @@ def send_portfolio_summary(chat_id):
 def background_scheduler():
     refresh_nifty500_symbols()
     schedule.every().day.at("08:00").do(refresh_nifty500_symbols)
-    schedule.every(15).minutes.do(run_market_scan)
+    # Only execute scheduled market scan if market is open
+    schedule.every(15).minutes.do(lambda: run_market_scan() if is_market_open() else None)
     while True:
         schedule.run_pending()
         time.sleep(1)
@@ -122,7 +175,9 @@ def dashboard():
         "unrealized_pnl": round(unrealized_pnl, 2),
         "realized_pnl": round(realized_pnl, 2)
     }
-    return render_template("dashboard.html", summary=summary)
+    
+    market_open = is_market_open()
+    return render_template("dashboard.html", summary=summary, market_open=market_open)
 
 @app.route("/active")
 def active_page():
@@ -169,18 +224,19 @@ def update_quantity():
 
 @app.route("/trigger_scan", methods=["POST"])
 def trigger_scan():
-    run_market_scan()
+    if not is_market_open():
+        flash("⚠️ Market is closed or on holiday. Manual scan cannot be executed.", "warning")
+    else:
+        run_market_scan()
+        flash("✅ Manual market scan triggered successfully!", "success")
     return redirect(url_for("dashboard"))
 
 if __name__ == "__main__":
-    # Send startup notification to Telegram
     send_telegram("🟢 *NiftyBot is online and running successfully!* 🚀")
 
-    # Start background market scanner
     t_scan = threading.Thread(target=background_scheduler, daemon=True)
     t_scan.start()
     
-    # Start Telegram command listener thread
     t_telegram = threading.Thread(target=telegram_command_listener, daemon=True)
     t_telegram.start()
 

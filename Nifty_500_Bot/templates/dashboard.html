@@ -1,58 +1,127 @@
-{% extends "base.html" %}
-{% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h2>📊 Bot Summary Dashboard</h2>
-    <form action="/trigger_scan" method="POST">
-        <button type="submit" class="btn btn-primary shadow-sm">⚡ Run Manual Scan</button>
-    </form>
-</div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NiftyBot - Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+    <!-- Updated Navbar with Mobile Hamburger Support -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand fw-bold" href="{{ url_for('dashboard') }}">🚀 Nifty 500 Bot</a>
+            
+            <!-- Mobile Hamburger Button -->
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <!-- Collapsible Menu Items -->
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <div class="navbar-nav ms-auto">
+                    <a class="nav-link active" href="{{ url_for('dashboard') }}">Dashboard</a>
+                    <a class="nav-link" href="{{ url_for('active_page') }}">Active Portfolio</a>
+                    <a class="nav-link" href="{{ url_for('sold_page') }}">Sold Stocks</a>
+                    <a class="nav-link" href="{{ url_for('cooling_page') }}">Cooling List</a>
+                </div>
+            </div>
+        </div>
+    </nav>
 
-<div class="row row-cols-1 row-cols-md-3 g-4 mb-4">
-    <div class="col">
-        <div class="card shadow-sm border-0 p-3 h-100">
-            <h6 class="text-muted">Total Invested</h6>
-            <h3 class="fw-bold text-secondary">₹{{ summary.total_invested }}</h3>
-        </div>
-    </div>
-    <div class="col">
-        <div class="card shadow-sm border-0 p-3 h-100">
-            <h6 class="text-muted">Current Value & Unrealized P/L</h6>
-            <h3 class="fw-bold {% if summary.unrealized_pnl >= 0 %}text-success{% else %}text-danger{% endif %}">
-                ₹{{ summary.total_current }} <small class="fs-6">({% if summary.unrealized_pnl >= 0 %}+{% endif %}{{ summary.unrealized_pnl }})</small>
-            </h3>
-        </div>
-    </div>
-    <div class="col">
-        <div class="card shadow-sm border-0 p-3 h-100">
-            <h6 class="text-muted">Realized P/L (Sold)</h6>
-            <h3 class="fw-bold {% if summary.realized_pnl >= 0 %}text-success{% else %}text-danger{% endif %}">
-                ₹{{ summary.realized_pnl }}
-            </h3>
-        </div>
-    </div>
-</div>
+    <div class="container mt-4">
+        <!-- Notification Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert alert-{{ 'warning' if category == 'warning' else 'success' }} alert-dismissible fade show shadow-sm" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
 
-<div class="row row-cols-1 row-cols-md-3 g-4">
-    <div class="col">
-        <div class="card shadow-sm border-0 p-3 text-center bg-white">
-            <h6 class="text-muted">Active Stocks Count</h6>
-            <h1 class="fw-bold text-primary display-4">{{ summary.active_count }}</h1>
-            <a href="/active" class="btn btn-outline-primary btn-sm mt-2">View Active Stocks</a>
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>Dashboard Overview</h2>
+            
+            <!-- Dynamic Manual Scan Form -->
+            <form action="{{ url_for('trigger_scan') }}" method="POST" class="d-inline">
+                <button 
+                    type="submit" 
+                    class="btn {{ 'btn-primary' if market_open else 'btn-secondary' }} shadow-sm" 
+                    {% if not market_open %}disabled{% endif %}
+                    title="{{ 'Market is open' if market_open else 'Market is closed (Mon-Fri, 9:15 AM - 3:30 PM IST)' }}">
+                    {% if market_open %}
+                        🚀 Trigger Manual Scan
+                    {% else %}
+                        🔒 Market Closed
+                    {% endif %}
+                </button>
+            </form>
+        </div>
+
+        <div class="row g-3">
+            <div class="col-md-3">
+                <div class="card text-white bg-primary shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title">Active Positions</h5>
+                        <p class="card-text display-6">{{ summary.active_count }}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-white bg-success shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title">Realized Profit</h5>
+                        <p class="card-text display-6">₹{{ summary.realized_pnl }}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-white bg-info shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title">Unrealized P&L</h5>
+                        <p class="card-text display-6">₹{{ summary.unrealized_pnl }}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-white bg-secondary shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title">Cooling List</h5>
+                        <p class="card-text display-6">{{ summary.cooling_count }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title">Capital Overview</h5>
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item d-flex justify-content-between">
+                                <span>Total Invested Amount:</span>
+                                <strong>₹{{ summary.total_invested }}</strong>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between">
+                                <span>Current Portfolio Value:</span>
+                                <strong>₹{{ summary.total_current }}</strong>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between">
+                                <span>Total Sold Trades:</span>
+                                <strong>{{ summary.sold_count }}</strong>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
-    <div class="col">
-        <div class="card shadow-sm border-0 p-3 text-center bg-white">
-            <h6 class="text-muted">Sold Stocks Count</h6>
-            <h1 class="fw-bold text-dark display-4">{{ summary.sold_count }}</h1>
-            <a href="/sold" class="btn btn-outline-dark btn-sm mt-2">View Sold Stocks</a>
-        </div>
-    </div>
-    <div class="col">
-        <div class="card shadow-sm border-0 p-3 text-center bg-white">
-            <h6 class="text-muted">Cooling Period Count</h6>
-            <h1 class="fw-bold text-warning display-4">{{ summary.cooling_count }}</h1>
-            <a href="/cooling" class="btn btn-outline-warning btn-sm mt-2">View Cooling Stocks</a>
-        </div>
-    </div>
-</div>
-{% endblock %}
+
+    <!-- Bootstrap JS Bundle for Mobile Hamburger Menu toggling -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
