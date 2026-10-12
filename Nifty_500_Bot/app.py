@@ -1,243 +1,191 @@
-import os
-import threading
-import time
+"""Flask dashboard + Telegram control for a paper-trading bot. No live orders."""
+import os, threading, time, secrets
 from datetime import datetime
-import pytz
+from zoneinfo import ZoneInfo
 import requests
 import pandas as pd
-from flask import Flask, render_template, request, redirect, url_for, flash
 import schedule
 from dotenv import load_dotenv
-from bot_engine import (
-    run_market_scan,
-    refresh_nifty500_symbols,
-    send_telegram,
-    ACTIVE_FILE,
-    SOLD_FILE,
-    COOLING_FILE,
-    TRADES_FILE,
-    fetch_stock_data_with_fallback
-)
+from flask import Flask, render_template, request, redirect, url_for, flash, session, abort, jsonify
+from bot_status import publish_status, recent_status
+from bot_engine import (run_market_scan, refresh_nse_equity_symbols, send_telegram,
+    ACTIVE_FILE, SOLD_FILE, COOLING_FILE, TRADES_FILE, fetch_stock_data_with_fallback,
+    is_market_open, _read_csv, ACTIVE_COLUMNS, SOLD_COLUMNS, COOLING_COLUMNS, TRADE_COLUMNS, SCAN_INTERVAL_MINUTES)
 
 load_dotenv()
-
+IST = ZoneInfo("Asia/Kolkata")
 app = Flask(__name__)
-app.secret_key = os.getenv("FLASK_SECRET_KEY", "niftybot_secure_flash_key")
-
+app.secret_key = os.getenv("FLASK_SECRET_KEY") or secrets.token_hex(32)
+app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Lax", SESSION_COOKIE_SECURE=os.getenv("COOKIE_SECURE", "0") == "1")
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-APPROVED_CHAT_ID = str(os.getenv("TELEGRAM_CHAT_ID"))
+APPROVED_CHAT_ID = str(os.getenv("TELEGRAM_CHAT_ID") or "")
 
-# Official NSE Equities Trading Holidays for 2026 (Format: YYYY-MM-DD)
-NSE_HOLIDAYS_2026 = {
-    "2026-01-26",  # Republic Day
-    "2026-03-03",  # Holi
-    "2026-03-26",  # Shri Ram Navami
-    "2026-03-31",  # Shri Mahavir Jayanti
-    "2026-04-03",  # Good Friday
-    "2026-04-14",  # Dr. Baba Saheb Ambedkar Jayanti
-    "2026-05-01",  # Maharashtra Day
-    "2026-05-28",  # Bakri Id
-    "2026-06-26",  # Muharram
-    "2026-09-14",  # Ganesh Chaturthi
-    "2026-10-02",  # Mahatma Gandhi Jayanti
-    "2026-10-20",  # Dussehra
-    "2026-11-10",  # Diwali-Balipratipada
-    "2026-11-24",  # Prakash Gurpurb Sri Guru Nanak Dev
-    "2026-12-25",  # Christmas
-}
+# NSE holidays change annually. Keep this list current from official NSE notices.
+NSE_HOLIDAYS = set(filter(None, os.getenv("NSE_HOLIDAYS", "").split(",")))
 
-def is_market_open():
-    """
-    Checks if the Indian stock market (NSE) is currently open.
-    Hours: Monday-Friday, 09:15 AM to 03:30 PM IST (excluding official NSE holidays).
-    """
-    ist = pytz.timezone('Asia/Kolkata')
-    now = datetime.now(ist)
-    
-    # 1. Weekend check (Saturday = 5, Sunday = 6)
-    if now.weekday() >= 5:
-        return False
-        
-    # 2. Holiday check
-    today_str = now.strftime("%Y-%m-%d")
-    if today_str in NSE_HOLIDAYS_2026:
-        return False
+def market_open_with_holidays():
+    now = datetime.now(IST)
+    return is_market_open() and now.strftime("%Y-%m-%d") not in NSE_HOLIDAYS
 
-    # 3. Time check (09:15 AM - 03:30 PM IST)
-    market_start = now.replace(hour=9, minute=15, second=0, microsecond=0)
-    market_end = now.replace(hour=15, minute=30, second=0, microsecond=0)
-    
-    return market_start <= now <= market_end
+def csrf_token():
+    if "csrf_token" not in session:
+        session["csrf_token"] = secrets.token_urlsafe(32)
+    return session["csrf_token"]
+app.jinja_env.globals["csrf_token"] = csrf_token
+
+@app.before_request
+def csrf_protection():
+    # No login is implemented yet by design. Keep the server bound to localhost
+    # and require CSRF tokens for state-changing POST routes.
+    if request.method == "POST":
+        supplied = request.form.get("csrf_token", "")
+        expected = session.get("csrf_token", "")
+        if not expected or not secrets.compare_digest(supplied, expected):
+            abort(400, "Invalid CSRF token. Refresh the page and retry.")
+
 
 def telegram_command_listener():
-    """Polls Telegram for commands like /summary and /scan securely"""
     if not TELEGRAM_TOKEN or not APPROVED_CHAT_ID:
         return
-    
     last_update_id = 0
     while True:
         try:
-            url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/getUpdates?offset={last_update_id + 1}&timeout=30"
-            res = requests.get(url, timeout=35)
-            if res.status_code == 200:
-                data = res.json()
-                for update in data.get("result", []):
-                    last_update_id = update["update_id"]
-                    message = update.get("message", {})
-                    chat_id = str(message.get("chat", {}).get("id", ""))
-                    text = message.get("text", "").strip().lower()
-
-                    if chat_id == APPROVED_CHAT_ID:
-                        if text == "/summary":
-                            send_portfolio_summary(chat_id)
-                        elif text == "/scan":
-                            if not is_market_open():
-                                send_telegram("⚠️ *Manual scan rejected:* Market is currently closed or on a holiday.")
-                            else:
-                                send_telegram("🔍 *Manual scan initiated via Telegram...* Please wait a moment.")
-                                run_market_scan()
-                                send_telegram("✅ *Manual scan complete!* Checked 50 stocks for entry/exit signals.")
-        except Exception as e:
-            print(f"Telegram Polling Error: {e}")
+            r = requests.get(f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/getUpdates",
+                             params={"offset": last_update_id + 1, "timeout": 25}, timeout=30)
+            r.raise_for_status()
+            for update in r.json().get("result", []):
+                last_update_id = max(last_update_id, int(update.get("update_id", 0)))
+                message = update.get("message", {})
+                chat_id = str(message.get("chat", {}).get("id", ""))
+                command = (message.get("text") or "").strip().lower()
+                if chat_id != APPROVED_CHAT_ID: continue
+                if command == "/summary": send_portfolio_summary(chat_id)
+                elif command == "/scan":
+                    if not market_open_with_holidays():
+                        send_telegram("Manual scan rejected: market is closed or holiday.")
+                    else:
+                        send_telegram("Paper scan started.")
+                        result = run_market_scan()
+                        send_telegram(f"Scan result: {result}")
+        except Exception as exc:
+            print(f"Telegram polling error: {exc}")
         time.sleep(2)
 
 def send_portfolio_summary(chat_id):
-    """Computes exact metrics and replies to Telegram /summary request"""
-    buy_count, sell_count = 0, 0
-    if os.path.exists(TRADES_FILE):
-        df_trades = pd.read_csv(TRADES_FILE)
-        buy_count = len(df_trades[df_trades["type"] == "BUY"])
-        sell_count = len(df_trades[df_trades["type"] == "SELL"])
-
-    active_count = 0
-    active_pnl = 0.0
-    if os.path.exists(ACTIVE_FILE):
-        df_active = pd.read_csv(ACTIVE_FILE)
-        active_count = len(df_active)
-        for _, row in df_active.iterrows():
-            live = fetch_stock_data_with_fallback(row["symbol"])
-            cur_price = live["price"] if live else float(row["buy_price"])
-            active_pnl += (cur_price - float(row["buy_price"])) * int(row["quantity"])
-
-    realized_pnl = 0.0
-    if os.path.exists(SOLD_FILE):
-        df_sold = pd.read_csv(SOLD_FILE)
-        realized_pnl = df_sold["profit"].sum() if not df_sold.empty else 0.0
-
-    msg = (
-        f"📊 *Portfolio & Bot Summary*\n\n"
-        f"• Total Buy Signals: *{buy_count}*\n"
-        f"• Total Sell Signals: *{sell_count}*\n"
-        f"• Current Active Stocks: *{active_count}*\n"
-        f"• Realized Profit (Bagged): *₹{realized_pnl:.2f}*\n"
-        f"• Active Stocks P&L: *₹{active_pnl:.2f}*"
-    )
-    
-    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-    requests.post(url, json={"chat_id": chat_id, "text": msg, "parse_mode": "Markdown"})
+    trades = _read_csv(TRADES_FILE, TRADE_COLUMNS)
+    active = _read_csv(ACTIVE_FILE, ACTIVE_COLUMNS)
+    sold = _read_csv(SOLD_FILE, SOLD_COLUMNS)
+    buys = int((trades["type"] == "BUY").sum()) if not trades.empty else 0
+    sells = int((trades["type"] == "SELL").sum()) if not trades.empty else 0
+    realized = pd.to_numeric(sold["profit"], errors="coerce").fillna(0).sum() if not sold.empty else 0.0
+    unrealized = 0.0; priced = 0; unpriced = 0
+    for _, row in active.iterrows():
+        live = fetch_stock_data_with_fallback(str(row["symbol"]))
+        if live:
+            unrealized += (live["price"] - float(row["buy_price"])) * int(row["quantity"]); priced += 1
+        else: unpriced += 1
+    msg = (f"Paper portfolio summary\nBuy records: {buys}\nSell records: {sells}\nActive positions: {len(active)}\n"
+           f"Realized P&L: ₹{realized:.2f}\nUnrealized P&L (priced positions only): ₹{unrealized:.2f}\n"
+           f"Positions without fresh data: {unpriced}")
+    try:
+        requests.post(f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage", json={"chat_id": chat_id, "text": msg}, timeout=10).raise_for_status()
+    except Exception as exc: print(f"Telegram summary error: {exc}")
 
 def background_scheduler():
-    refresh_nifty500_symbols()
-    schedule.every().day.at("08:00").do(refresh_nifty500_symbols)
-    # Only execute scheduled market scan if market is open
-    schedule.every(15).minutes.do(lambda: run_market_scan() if is_market_open() else None)
+    publish_status("Background scheduler started.")
+    provider = "Upstox" if (os.getenv("UPSTOX_ACCESS_TOKEN") or os.getenv("UPSTOX_ANALYTICS_ACCESS_TOKEN") or "").strip() else "Yahoo Finance"
+    publish_status(f"Market-data provider selected: {provider}.", "success")
+    publish_status("Dashboard has no login by design; keep it on localhost and use an SSH tunnel on GCP.", "info")
+    refresh_nse_equity_symbols()
+    schedule.every().day.at("08:00").do(refresh_nse_equity_symbols)
+    schedule.every(SCAN_INTERVAL_MINUTES).minutes.do(lambda: run_market_scan() if market_open_with_holidays() else None)
     while True:
-        schedule.run_pending()
-        time.sleep(1)
+        schedule.run_pending(); time.sleep(1)
+
+@app.route("/api/status")
+def api_status():
+    return jsonify({"events": recent_status(60)})
 
 @app.route("/")
 def dashboard():
-    active_count, total_invested, total_current = 0, 0.0, 0.0
-    if os.path.exists(ACTIVE_FILE):
-        df_active = pd.read_csv(ACTIVE_FILE)
-        active_count = len(df_active)
-        for _, row in df_active.iterrows():
-            live = fetch_stock_data_with_fallback(row["symbol"])
-            cur_price = live["price"] if live else float(row["buy_price"])
-            total_invested += float(row["buy_price"]) * int(row["quantity"])
-            total_current += cur_price * int(row["quantity"])
+    active = _read_csv(ACTIVE_FILE, ACTIVE_COLUMNS)
+    sold = _read_csv(SOLD_FILE, SOLD_COLUMNS)
+    cooling = _read_csv(COOLING_FILE, COOLING_COLUMNS)
+    total_invested = total_current = 0.0; unpriced_count = 0
+    for _, row in active.iterrows():
+        buy = float(row["buy_price"]); qty = int(row["quantity"]); total_invested += buy * qty
+        live = fetch_stock_data_with_fallback(str(row["symbol"]))
+        if live: total_current += live["price"] * qty
+        else: unpriced_count += 1
+    realized = pd.to_numeric(sold["profit"], errors="coerce").fillna(0).sum() if not sold.empty else 0.0
+    summary = {"active_count": len(active), "sold_count": len(sold), "cooling_count": len(cooling),
+        "total_invested": round(total_invested, 2), "total_current": round(total_current, 2),
+        "unrealized_pnl": round(total_current-total_invested, 2) if unpriced_count == 0 else None,
+        "realized_pnl": round(float(realized), 2), "unpriced_count": unpriced_count}
+    return render_template("dashboard.html", summary=summary, market_open=market_open_with_holidays())
 
-    sold_count, realized_pnl = 0, 0.0
-    if os.path.exists(SOLD_FILE):
-        df_sold = pd.read_csv(SOLD_FILE)
-        sold_count = len(df_sold)
-        realized_pnl = df_sold["profit"].sum() if not df_sold.empty else 0.0
-
-    cooling_count = len(pd.read_csv(COOLING_FILE)) if os.path.exists(COOLING_FILE) else 0
-    unrealized_pnl = total_current - total_invested
-
-    summary = {
-        "active_count": active_count,
-        "sold_count": sold_count,
-        "cooling_count": cooling_count,
-        "total_invested": round(total_invested, 2),
-        "total_current": round(total_current, 2),
-        "unrealized_pnl": round(unrealized_pnl, 2),
-        "realized_pnl": round(realized_pnl, 2)
-    }
-    
-    market_open = is_market_open()
-    return render_template("dashboard.html", summary=summary, market_open=market_open)
+@app.route("/about")
+def about_page():
+    from bot_engine import (MIN_PRICE, MAX_PRICE, RSI_BUY_THRESHOLD, RSI_MAX_BUY_THRESHOLD,
+        RSI_EXIT_THRESHOLD, MAX_OPEN_POSITIONS, MAX_BUYS_PER_SCAN, MAX_SCAN_SYMBOLS,
+        SCAN_INTERVAL_MINUTES, COOLING_HOURS, MIN_AVG_DAILY_TURNOVER_INR, MIN_AVG_DAILY_VOLUME)
+    token = (os.getenv("UPSTOX_ACCESS_TOKEN") or os.getenv("UPSTOX_ANALYTICS_ACCESS_TOKEN") or "").strip()
+    return render_template("about.html",
+        provider_name="Upstox (token configured)" if token else "Yahoo Finance (no Upstox token configured)",
+        min_price=MIN_PRICE, max_price=MAX_PRICE, rsi_min=RSI_BUY_THRESHOLD, rsi_max=RSI_MAX_BUY_THRESHOLD,
+        rsi_exit=RSI_EXIT_THRESHOLD, max_open=MAX_OPEN_POSITIONS, max_buys=MAX_BUYS_PER_SCAN,
+        max_scan=MAX_SCAN_SYMBOLS, scan_interval=SCAN_INTERVAL_MINUTES, cooling_hours=COOLING_HOURS,
+        min_turnover=f"{MIN_AVG_DAILY_TURNOVER_INR:,.0f}", min_volume=f"{MIN_AVG_DAILY_VOLUME:,.0f}")
 
 @app.route("/active")
 def active_page():
-    active_stocks = []
-    if os.path.exists(ACTIVE_FILE):
-        df_active = pd.read_csv(ACTIVE_FILE)
-        for _, row in df_active.iterrows():
-            sym = row["symbol"]
-            buy_price = float(row["buy_price"])
-            qty = int(row["quantity"])
-            live = fetch_stock_data_with_fallback(sym)
-            current_price = live["price"] if live else buy_price
-            invested = buy_price * qty
-            current_val = current_price * qty
-            pnl = current_val - invested
-            pnl_pct = (pnl / invested) * 100 if invested > 0 else 0
-            active_stocks.append({
-                "symbol": sym, "buy_time": row["buy_time"], "buy_price": buy_price,
-                "current_price": current_price, "quantity": qty,
-                "invested": round(invested, 2), "current_val": round(current_val, 2),
-                "pnl": round(pnl, 2), "pnl_pct": round(pnl_pct, 2)
-            })
-    return render_template("active.html", active_stocks=active_stocks)
+    stocks = []
+    active = _read_csv(ACTIVE_FILE, ACTIVE_COLUMNS)
+    for _, row in active.iterrows():
+        symbol = str(row["symbol"]); buy = float(row["buy_price"]); qty = int(row["quantity"])
+        live = fetch_stock_data_with_fallback(symbol); price = live["price"] if live else None
+        invested = buy * qty; current_val = price * qty if price is not None else None
+        pnl = current_val - invested if current_val is not None else None
+        stocks.append({"symbol":symbol,"buy_time":row["buy_time"],"buy_price":round(buy,2),"current_price":round(price,2) if price is not None else None,
+          "quantity":qty,"invested":round(invested,2),"current_val":round(current_val,2) if current_val is not None else None,
+          "pnl":round(pnl,2) if pnl is not None else None,"pnl_pct":round(pnl/invested*100,2) if pnl is not None and invested else None})
+    return render_template("active.html", active_stocks=stocks)
 
 @app.route("/sold")
-def sold_page():
-    sold_stocks = pd.read_csv(SOLD_FILE).to_dict(orient="records") if os.path.exists(SOLD_FILE) else []
-    return render_template("sold.html", sold_stocks=sold_stocks)
-
+def sold_page(): return render_template("sold.html", sold_stocks=_read_csv(SOLD_FILE, SOLD_COLUMNS).fillna("").to_dict(orient="records"))
 @app.route("/cooling")
-def cooling_page():
-    cooling_stocks = pd.read_csv(COOLING_FILE).to_dict(orient="records") if os.path.exists(COOLING_FILE) else []
-    return render_template("cooling.html", cooling_stocks=cooling_stocks)
+def cooling_page(): return render_template("cooling.html", cooling_stocks=_read_csv(COOLING_FILE, COOLING_COLUMNS).fillna("").to_dict(orient="records"))
 
 @app.route("/update_quantity", methods=["POST"])
 def update_quantity():
-    symbol = request.form.get("symbol")
-    quantity = int(request.form.get("quantity", 1))
-    if os.path.exists(ACTIVE_FILE):
-        df_active = pd.read_csv(ACTIVE_FILE)
-        df_active.loc[df_active["symbol"] == symbol, "quantity"] = quantity
-        df_active.to_csv(ACTIVE_FILE, index=False)
+    symbol = str(request.form.get("symbol", "")).strip().upper()
+    try: quantity = int(request.form.get("quantity", ""))
+    except (TypeError, ValueError): quantity = 0
+    if not symbol or quantity < 1 or quantity > 1_000_000:
+        flash("Quantity must be between 1 and 1,000,000.", "warning")
+        return redirect(url_for("active_page"))
+    from bot_engine import DATA_LOCK, _write_csv_atomic
+    with DATA_LOCK:
+        active = _read_csv(ACTIVE_FILE, ACTIVE_COLUMNS)
+        if not (active["symbol"].astype(str).str.upper() == symbol).any():
+            flash("Position not found.", "warning")
+        else:
+            active.loc[active["symbol"].astype(str).str.upper() == symbol, "quantity"] = quantity
+            _write_csv_atomic(active, ACTIVE_FILE)
+            flash(f"Updated {symbol} quantity to {quantity} (paper portfolio only).", "success")
     return redirect(url_for("active_page"))
 
 @app.route("/trigger_scan", methods=["POST"])
 def trigger_scan():
-    if not is_market_open():
-        flash("⚠️ Market is closed or on holiday. Manual scan cannot be executed.", "warning")
+    if not market_open_with_holidays(): flash("Market closed or holiday; scan not run.", "warning")
     else:
-        run_market_scan()
-        flash("✅ Manual market scan triggered successfully!", "success")
+        result = run_market_scan()
+        flash(f"Scan result: {result}", "success" if result.get("status") == "complete" else "warning")
     return redirect(url_for("dashboard"))
 
 if __name__ == "__main__":
-    send_telegram("🟢 *NiftyBot is online and running successfully!* 🚀")
-
-    t_scan = threading.Thread(target=background_scheduler, daemon=True)
-    t_scan.start()
-    
-    t_telegram = threading.Thread(target=telegram_command_listener, daemon=True)
-    t_telegram.start()
-
-    app.run(host="0.0.0.0", port=5000, debug=False)
+    # No login yet: intentionally localhost-only. Access remotely only via SSH tunnel.
+    publish_status("Web dashboard starting in localhost-only mode.")
+    threading.Thread(target=background_scheduler, daemon=True).start()
+    threading.Thread(target=telegram_command_listener, daemon=True).start()
+    app.run(host=os.getenv("FLASK_HOST", "127.0.0.1"), port=int(os.getenv("FLASK_PORT", "5000")), debug=False)

@@ -22,18 +22,19 @@
                     <td class="fw-bold">{{ stock.symbol }}</td>
                     <td class="small text-muted">{{ stock.buy_time }}</td>
                     <td>₹{{ stock.buy_price }}</td>
-                    <td>₹{{ stock.current_price }}</td>
+                    <td>{% if stock.current_price is not none %}₹{{ stock.current_price }}{% else %}<span class="text-muted">Unavailable</span>{% endif %}</td>
                     <td>
                         <form action="/update_quantity" method="POST" class="d-flex align-items-center">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <input type="hidden" name="symbol" value="{{ stock.symbol }}">
                             <input type="number" name="quantity" value="{{ stock.quantity }}" min="1" class="form-control form-control-sm me-2" style="width: 75px;">
                             <button type="submit" class="btn btn-sm btn-outline-secondary">Save</button>
                         </form>
                     </td>
                     <td>₹{{ stock.invested }}</td>
-                    <td>₹{{ stock.current_val }}</td>
-                    <td class="fw-bold {% if stock.pnl >= 0 %}text-success{% else %}text-danger{% endif %}">
-                        ₹{{ stock.pnl }} ({{ stock.pnl_pct }}%)
+                    <td>{% if stock.current_val is not none %}₹{{ stock.current_val }}{% else %}—{% endif %}</td>
+                    <td class="fw-bold {% if stock.pnl is not none and stock.pnl >= 0 %}text-success{% elif stock.pnl is not none %}text-danger{% endif %}">
+                        {% if stock.pnl is not none %}₹{{ stock.pnl }} ({{ stock.pnl_pct }}%){% else %}<span class="text-muted">Unavailable — no fresh quote</span>{% endif %}
                     </td>
                 </tr>
                 {% else %}
